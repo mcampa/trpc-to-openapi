@@ -1,3 +1,4 @@
+import { HTTPHeaders } from '@trpc/client';
 import { AnyProcedure, TRPCError } from '@trpc/server';
 import {
   NodeHTTPHandlerOptions,
@@ -60,7 +61,7 @@ export const createOpenApiNodeHttpHandler = <
   return async (req: TRequest, res: TResponse, next?: OpenApiNextFunction) => {
     const sendResponse = (
       statusCode: number,
-      headers: Record<string, string>,
+      headers: HTTPHeaders,
       body: OpenApiResponse | undefined,
     ) => {
       res.statusCode = statusCode;

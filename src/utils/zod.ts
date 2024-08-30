@@ -1,4 +1,4 @@
-import { ZodObject, ZodRawShape, ZodTypeAny, z } from 'zod';
+import { ZodObject, ZodRawShape, z } from 'zod';
 
 export const instanceofZodType = (type: any): type is z.ZodTypeAny => {
   return !!type?._def?.typeName;
