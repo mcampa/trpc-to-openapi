@@ -1,3 +1,4 @@
+import { incomingMessageToRequest } from '@trpc/server/adapters/node-http';
 import { IncomingMessage, ServerResponse } from 'http';
 
 import { OpenApiRouter } from '../types';
@@ -16,6 +17,11 @@ export const createOpenApiHttpHandler = <TRouter extends OpenApiRouter>(
 ) => {
   const openApiHttpHandler = createOpenApiNodeHttpHandler(opts);
   return async (req: IncomingMessage, res: ServerResponse) => {
-    await openApiHttpHandler(req, res);
+    await openApiHttpHandler(
+      incomingMessageToRequest(req, {
+        maxBodySize: opts.maxBodySize ?? null,
+      }) as unknown as IncomingMessage,
+      res,
+    );
   };
 };

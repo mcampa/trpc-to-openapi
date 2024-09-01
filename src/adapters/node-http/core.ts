@@ -1,17 +1,20 @@
-import { HTTPHeaders } from '@trpc/client';
-import { AnyProcedure, TRPCError } from '@trpc/server';
+import { type HTTPHeaders } from '@trpc/client';
+import { TRPCError } from '@trpc/server';
 import {
-  NodeHTTPHandlerOptions,
-  NodeHTTPRequest,
-  NodeHTTPResponse,
-} from '@trpc/server/dist/adapters/node-http';
+  type NodeHTTPHandlerOptions,
+  type NodeHTTPRequest,
+  type NodeHTTPResponse,
+} from '@trpc/server/adapters/node-http';
+import { getErrorShape, getRequestInfo } from '@trpc/server/unstable-core-do-not-import';
+import { IncomingMessage } from 'http';
 import cloneDeep from 'lodash.clonedeep';
-import { ZodError, ZodTypeAny, z } from 'zod';
+import { ZodError, ZodTypeAny } from 'zod';
 
 import { generateOpenApiDocument } from '../../generator';
 import {
   OpenApiErrorResponse,
   OpenApiMethod,
+  OpenApiProcedure,
   OpenApiResponse,
   OpenApiRouter,
   OpenApiSuccessResponse,
@@ -68,18 +71,17 @@ export const createOpenApiNodeHttpHandler = <
       res.setHeader('Content-Type', 'application/json');
       for (const [key, value] of Object.entries(headers)) {
         if (typeof value !== 'undefined') {
-          res.setHeader(key, value);
+          res.setHeader(key, value as string);
         }
       }
       res.end(JSON.stringify(body));
     };
 
-    const method = req.method! as OpenApiMethod & 'HEAD';
+    const method = req.method as OpenApiMethod | 'HEAD';
     const reqUrl = req.url!;
     const url = new URL(reqUrl.startsWith('/') ? `http://127.0.0.1${reqUrl}` : reqUrl);
     const path = normalizePath(url.pathname);
     const { procedure, pathInput } = getProcedure(method, path) ?? {};
-
     let input: any = undefined;
     let ctx: any = undefined;
     let data: any = undefined;
@@ -115,14 +117,30 @@ export const createOpenApiNodeHttpHandler = <
       }
 
       // if supported, coerce all string values to correct types
-      if (zodSupportsCoerce && instanceofZodTypeObject(unwrappedSchema))
+      if (zodSupportsCoerce && instanceofZodTypeObject(unwrappedSchema)) {
         coerceSchema(unwrappedSchema);
+      }
 
-      ctx = await createContext?.({ req, res });
+      // console.log({
+      //   IncomingMessage: req instanceof IncomingMessage,
+      //   Request: req instanceof Request,
+      // });
+      const info = getRequestInfo({
+        req: req as unknown as Request,
+        path: decodeURIComponent(path),
+        router,
+        searchParams: url.searchParams,
+        headers: req.headers as unknown as Headers,
+      });
+
+      ctx = await createContext?.({ req, res, info });
       const caller = router.createCaller(ctx);
 
       const segments = procedure.path.split('.');
-      const procedureFn = segments.reduce((acc, curr) => acc[curr], caller as any) as AnyProcedure;
+      const procedureFn = segments.reduce(
+        (acc, curr) => acc[curr],
+        caller as any,
+      ) as OpenApiProcedure;
 
       data = await procedureFn(input);
 
@@ -132,6 +150,8 @@ export const createOpenApiNodeHttpHandler = <
         ctx,
         data: [data],
         errors: [],
+        info,
+        eagerGeneration: true,
       });
 
       const statusCode = meta?.status ?? 200;
@@ -156,9 +176,12 @@ export const createOpenApiNodeHttpHandler = <
         ctx,
         data: [data],
         errors: [error],
+        info: undefined,
+        eagerGeneration: true,
       });
 
-      const errorShape = router.getErrorShape({
+      const errorShape = getErrorShape({
+        config: router._def._config,
         error,
         type: procedure?.type ?? 'unknown',
         path: procedure?.path,

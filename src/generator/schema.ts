@@ -184,7 +184,7 @@ export const errorResponseObject = (
       },
     };
   }
-  return errorResponseObjectByCode[code]!;
+  return errorResponseObjectByCode[code];
 };
 
 export const errorResponseFromStatusCode = (status: number) => {

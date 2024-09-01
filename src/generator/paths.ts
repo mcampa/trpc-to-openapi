@@ -35,7 +35,7 @@ export const getOpenApiPathsObject = (
   securitySchemeNames: string[],
 ): ZodOpenApiPathsObject => {
   const pathsObject: ZodOpenApiPathsObject = {};
-  const procedures = cloneDeep(appRouter._def.procedures as OpenApiProcedureRecord);
+  const procedures = cloneDeep(appRouter._def.procedures);
 
   forEachOpenApiProcedure(procedures, ({ path: procedurePath, type, procedure, openapi }) => {
     const procedureName = `${type}.${procedurePath}`;

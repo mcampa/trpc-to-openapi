@@ -13,9 +13,13 @@ export const TRPC_ERROR_CODE_HTTP_STATUS: Record<TRPCError['code'], number> = {
   PRECONDITION_FAILED: 412,
   PAYLOAD_TOO_LARGE: 413,
   METHOD_NOT_SUPPORTED: 405,
+  UNSUPPORTED_MEDIA_TYPE: 415,
   TOO_MANY_REQUESTS: 429,
   UNPROCESSABLE_CONTENT: 422,
   NOT_IMPLEMENTED: 501,
+  BAD_GATEWAY: 502,
+  SERVICE_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
 };
 
 export const HTTP_STATUS_TRPC_ERROR_CODE: Record<number, TRPCError['code']> = {
@@ -30,9 +34,13 @@ export const HTTP_STATUS_TRPC_ERROR_CODE: Record<number, TRPCError['code']> = {
   412: 'PRECONDITION_FAILED',
   413: 'PAYLOAD_TOO_LARGE',
   405: 'METHOD_NOT_SUPPORTED',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
   429: 'TOO_MANY_REQUESTS',
   422: 'UNPROCESSABLE_CONTENT',
   501: 'NOT_IMPLEMENTED',
+  502: 'BAD_GATEWAY',
+  503: 'SERVICE_UNAVAILABLE',
+  504: 'GATEWAY_TIMEOUT',
 };
 
 export const TRPC_ERROR_CODE_MESSAGE: Record<TRPCError['code'], string> = {
@@ -51,6 +59,10 @@ export const TRPC_ERROR_CODE_MESSAGE: Record<TRPCError['code'], string> = {
   TOO_MANY_REQUESTS: 'Too many requests',
   UNPROCESSABLE_CONTENT: 'Unprocessable content',
   NOT_IMPLEMENTED: 'Not implemented',
+  BAD_GATEWAY: 'Bad gateway',
+  SERVICE_UNAVAILABLE: 'Service unavailable',
+  GATEWAY_TIMEOUT: 'Gateway timeout',
+  UNSUPPORTED_MEDIA_TYPE: 'Unsupported media type',
 };
 
 export function getErrorFromUnknown(cause: unknown): TRPCError {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import { TRPCError, initTRPC } from '@trpc/server';
 import { createHTTPHandler } from '@trpc/server/adapters/standalone';
@@ -29,6 +28,8 @@ const clearMocks = () => {
   onErrorMock.mockClear();
 };
 
+let server: Server;
+
 const createHttpServerWithRouter = <TRouter extends OpenApiRouter>(
   handlerOpts: CreateOpenApiHttpHandlerOptions<TRouter>,
 ) => {
@@ -48,7 +49,7 @@ const createHttpServerWithRouter = <TRouter extends OpenApiRouter>(
   } as any);
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  const server = new Server((req, res) => {
+  server = new Server((req, res) => {
     if (req.url!.startsWith('/trpc')) {
       req.url = req.url!.replace('/trpc', '');
       return httpHandler(req, res);
@@ -71,6 +72,7 @@ const t = initTRPC.meta<OpenApiMeta>().context<any>().create();
 describe('standalone adapter', () => {
   afterEach(() => {
     clearMocks();
+    server?.close();
   });
 
   // Please note: validating router does not happen in `production`.
@@ -98,7 +100,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'pong' as const),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -110,8 +112,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with not found method', async () => {
@@ -123,7 +123,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'pong' as const),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -135,8 +135,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with missing content-type header', async () => {
@@ -148,13 +146,14 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
     const res = await fetch(`${url}/echo`, {
       method: 'POST',
       body: JSON.stringify('Lily'),
+      headers: { 'Content-Type': 'application/json' },
     });
     const body = (await res.json()) as OpenApiErrorResponse;
 
@@ -177,8 +176,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with invalid content-type', async () => {
@@ -190,7 +187,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -201,27 +198,16 @@ describe('standalone adapter', () => {
     });
     const body = (await res.json()) as OpenApiErrorResponse;
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(415);
     expect(body).toEqual(
       expect.objectContaining({
-        message: 'Input validation failed',
-        code: 'BAD_REQUEST',
-        issues: [
-          {
-            code: 'invalid_type',
-            expected: 'string',
-            message: 'Required',
-            path: ['payload'],
-            received: 'undefined',
-          },
-        ],
+        message: 'Unsupported content-type "text/plain',
+        code: 'UNSUPPORTED_MEDIA_TYPE',
       }),
     );
-    expect(createContextMock).toHaveBeenCalledTimes(1);
+    expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with missing input', async () => {
@@ -233,7 +219,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -259,8 +245,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with wrong input type', async () => {
@@ -272,7 +256,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -302,8 +286,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with bad output', async () => {
@@ -316,7 +298,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'fail'),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -337,8 +319,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with valid routes', async () => {
@@ -355,7 +335,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -385,8 +365,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with void input', async () => {
@@ -403,12 +381,15 @@ describe('standalone adapter', () => {
         .mutation(() => 'pong' as const),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
     {
-      const res = await fetch(`${url}/ping`, { method: 'GET' });
+      const res = await fetch(`${url}/ping`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -420,7 +401,10 @@ describe('standalone adapter', () => {
       clearMocks();
     }
     {
-      const res = await fetch(`${url}/ping`, { method: 'POST' });
+      const res = await fetch(`${url}/ping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -429,8 +413,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with void output', async () => {
@@ -442,7 +424,7 @@ describe('standalone adapter', () => {
         .query(() => undefined),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -459,8 +441,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with createContext', async () => {
@@ -476,7 +456,7 @@ describe('standalone adapter', () => {
         .query(({ input, ctx }) => ({ payload: input.payload, context: ctx })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       createContext: (): Context => ({ id: 1234567890 }),
       router: appRouter,
     });
@@ -493,8 +473,6 @@ describe('standalone adapter', () => {
     );
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with responseMeta', async () => {
@@ -506,7 +484,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
       responseMeta: () => ({ status: 202, headers: { 'x-custom': 'custom header' } }),
     });
@@ -522,8 +500,6 @@ describe('standalone adapter', () => {
     });
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with skipped transformer', async () => {
@@ -539,7 +515,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -553,14 +529,12 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with warmup request', async () => {
     const appRouter = t.router({});
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -570,8 +544,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(0);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with invalid json', async () => {
@@ -583,7 +555,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -605,8 +577,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with maxBodySize', async () => {
@@ -620,7 +590,7 @@ describe('standalone adapter', () => {
 
     const requestBody = JSON.stringify({ payload: 'Lily' });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
       maxBodySize: requestBody.length,
     });
@@ -662,8 +632,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(1);
     }
-
-    close();
   });
 
   test('with multiple input query string params', async () => {
@@ -675,7 +643,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -689,8 +657,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with case insensitivity', async () => {
@@ -707,7 +673,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -733,8 +699,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with path parameters', async () => {
@@ -764,7 +728,7 @@ describe('standalone adapter', () => {
         })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -808,8 +772,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with bad output', async () => {
@@ -822,7 +784,7 @@ describe('standalone adapter', () => {
         .query(() => ({})),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -839,8 +801,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with void and trpc client', async () => {
@@ -858,7 +818,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -925,8 +885,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(1);
     }
-
-    close();
   });
 
   test('with DELETE mutation', async () => {
@@ -938,11 +896,14 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => input),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
-    const res = await fetch(`${url}/echo-delete?payload=Mario`, { method: 'DELETE' });
+    const res = await fetch(`${url}/echo-delete?payload=Mario`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -950,8 +911,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with POST query', async () => {
@@ -963,7 +922,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => input),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -979,8 +938,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with thrown error', async () => {
@@ -1004,12 +961,15 @@ describe('standalone adapter', () => {
         }),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
     {
-      const res = await fetch(`${url}/custom-error`, { method: 'POST' });
+      const res = await fetch(`${url}/custom-error`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
       const body = (await res.json()) as OpenApiErrorResponse;
 
       expect(res.status).toBe(500);
@@ -1026,7 +986,10 @@ describe('standalone adapter', () => {
       clearMocks();
     }
     {
-      const res = await fetch(`${url}/custom-trpc-error`, { method: 'POST' });
+      const res = await fetch(`${url}/custom-trpc-error`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
       const body = (await res.json()) as OpenApiErrorResponse;
 
       expect(res.status).toBe(499);
@@ -1040,8 +1003,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(1);
     }
-
-    close();
   });
 
   test('with error formatter', async () => {
@@ -1070,11 +1031,14 @@ describe('standalone adapter', () => {
         }),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
-    const res = await fetch(`${url}/custom-formatted-error`, { method: 'POST' });
+    const res = await fetch(`${url}/custom-formatted-error`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
     const body = (await res.json()) as OpenApiErrorResponse;
 
     expect(res.status).toBe(500);
@@ -1088,8 +1052,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
-
-    close();
   });
 
   test('with nested routers', async () => {
@@ -1115,7 +1077,7 @@ describe('standalone adapter', () => {
       }),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1153,8 +1115,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with multiple inputs', async () => {
@@ -1167,7 +1127,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ fullName: `${input.firstName} ${input.lastName}` })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1179,8 +1139,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with preprocess', async () => {
@@ -1196,7 +1154,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ result: input.value.join('XXX') })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1208,8 +1166,6 @@ describe('standalone adapter', () => {
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
   });
 
   test('with non-coerce preprocess', async () => {
@@ -1234,7 +1190,7 @@ describe('standalone adapter', () => {
           .query(({ input }) => ({ result: input.number + 1 })),
       });
 
-      const { url, close } = createHttpServerWithRouter({
+      const { url } = createHttpServerWithRouter({
         router: appRouter,
       });
 
@@ -1246,8 +1202,6 @@ describe('standalone adapter', () => {
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-      close();
     }
     // @ts-expect-error - hack to re-enable zodSupportsCoerce
     // eslint-disable-next-line import/namespace
@@ -1273,7 +1227,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ result: input.number + 1 })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1299,6 +1253,7 @@ describe('standalone adapter', () => {
       });
       const body = await res.json();
 
+      expect(body).toEqual(1);
       expect(res.status).toBe(200);
       expect(body).toEqual({ result: date.getTime() + 1 });
       expect(createContextMock).toHaveBeenCalledTimes(1);
@@ -1318,8 +1273,6 @@ describe('standalone adapter', () => {
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
     }
-
-    close();
   });
 
   test('with x-www-form-urlencoded', async () => {
@@ -1337,7 +1290,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ result: input.payload.join(' ') })),
     });
 
-    const { url, close } = createHttpServerWithRouter({
+    const { url } = createHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1348,12 +1301,10 @@ describe('standalone adapter', () => {
     });
     const body = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(body).toEqual({ result: 'Hello World' });
-    expect(createContextMock).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(415);
+    expect(body).toEqual(expect.objectContaining({ code: 'UNSUPPORTED_MEDIA_TYPE' }));
+    expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
-    expect(onErrorMock).toHaveBeenCalledTimes(0);
-
-    close();
+    expect(onErrorMock).toHaveBeenCalledTimes(1);
   });
 });

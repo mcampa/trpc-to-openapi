@@ -4,7 +4,7 @@ import { forEachOpenApiProcedure } from '../../utils/procedure';
 
 export const createProcedureCache = (router: OpenApiRouter) => {
   const procedureCache = new Map<
-    OpenApiMethod,
+    OpenApiMethod | 'HEAD',
     Map<
       RegExp,
       {
@@ -15,9 +15,10 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     >
   >();
 
-  const { queries, mutations } = router._def;
-
-  forEachOpenApiProcedure(queries, ({ path: queryPath, procedure, openapi }) => {
+  forEachOpenApiProcedure(router._def.procedures, ({ path: queryPath, procedure, openapi }) => {
+    if (procedure._def.type === 'subscription') {
+      return;
+    }
     const { method } = openapi;
     if (!procedureCache.has(method)) {
       procedureCache.set(method, new Map());
@@ -25,27 +26,13 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     const path = normalizePath(openapi.path);
     const pathRegExp = getPathRegExp(path);
     procedureCache.get(method)!.set(pathRegExp, {
-      type: 'query',
+      type: procedure._def.type,
       path: queryPath,
       procedure,
     });
   });
 
-  forEachOpenApiProcedure(mutations, ({ path: mutationPath, procedure, openapi }) => {
-    const { method } = openapi;
-    if (!procedureCache.has(method)) {
-      procedureCache.set(method, new Map());
-    }
-    const path = normalizePath(openapi.path);
-    const pathRegExp = getPathRegExp(path);
-    procedureCache.get(method)!.set(pathRegExp, {
-      type: 'mutation',
-      path: mutationPath,
-      procedure,
-    });
-  });
-
-  return (method: OpenApiMethod, path: string) => {
+  return (method: OpenApiMethod | 'HEAD', path: string) => {
     const procedureMethodCache = procedureCache.get(method);
     if (!procedureMethodCache) {
       return undefined;

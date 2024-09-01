@@ -1,10 +1,13 @@
-import { Procedure, ProcedureParams, Router } from '@trpc/server';
-import type { RootConfig } from '@trpc/server/dist/core/internals/config';
-import type { RouterDef } from '@trpc/server/dist/core/router';
 import { TRPC_ERROR_CODE_KEY } from '@trpc/server/dist/rpc';
-import { AnyZodObject, ZodIssue } from 'zod';
+import type {
+  CreateRootTypes,
+  Procedure,
+  ProcedureType,
+  Router,
+} from '@trpc/server/unstable-core-do-not-import';
+import type { AnyZodObject, ZodIssue } from 'zod';
 
-export { type OpenAPIObject, type SecuritySchemeObject } from 'openapi3-ts/oas31';
+export { type OpenAPIObject, type SecuritySchemeObject } from 'openapi3-ts/dist/oas31';
 
 export type OpenApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -34,37 +37,27 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
   };
 };
 
-export type OpenApiProcedure<TMeta = TRPCMeta> = Procedure<
-  'query' | 'mutation',
-  ProcedureParams<
-    RootConfig<{
-      transformer: any;
-      errorShape: any;
-      ctx: any;
-      meta: OpenApiMeta<TMeta>;
-    }>,
-    any,
-    any,
-    any,
-    any,
-    any,
-    OpenApiMeta<TMeta>
-  >
+export type OpenApiProcedure = Procedure<
+  ProcedureType,
+  {
+    input: any; // AnyZodObject[] | Parser[] | undefined;
+    output: any; // Parser | undefined;
+  }
 >;
 
-export type OpenApiProcedureRecord<TMeta = TRPCMeta> = Record<string, OpenApiProcedure<TMeta>>;
+// export type OpenApiProcedureRecord = Record<string, OpenApiProcedure>;
+export interface OpenApiProcedureRecord {
+  [key: string]: OpenApiProcedure | OpenApiProcedureRecord;
+}
 
-export type OpenApiRouter<TMeta = TRPCMeta> = Router<
-  RouterDef<
-    RootConfig<{
-      transformer: any;
-      errorShape: any;
-      ctx: any;
-      meta: OpenApiMeta<TMeta>;
-    }>,
-    any,
-    any
-  >
+export type OpenApiRouter = Router<
+  CreateRootTypes<{
+    ctx: any;
+    meta: TRPCMeta;
+    errorShape: any;
+    transformer: any;
+  }>,
+  OpenApiProcedureRecord
 >;
 
 export type OpenApiSuccessResponse<D = any> = D;

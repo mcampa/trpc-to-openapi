@@ -11,14 +11,16 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string>
       if (!parsedQs[key]) {
         parsedQs[key] = [];
       }
-      parsedQs[key]!.push(value);
+      parsedQs[key].push(value);
     });
     req.query = parsedQs;
   }
 
+  const reqQuery = req.query as typeof query;
+
   // normalize first value in array
-  Object.keys(req.query).forEach((key) => {
-    const value = req.query![key];
+  Object.keys(reqQuery).forEach((key) => {
+    const value = reqQuery[key];
     if (value) {
       if (typeof value === 'string') {
         query[key] = value;

@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-types */
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import { TRPCError, initTRPC } from '@trpc/server';
+import { IncomingMessage } from 'http';
 import fetch from 'node-fetch';
 import superjson from 'superjson';
 import { z } from 'zod';
@@ -84,6 +83,7 @@ describe('fetch adapter', () => {
 
     const req = new Request('https://localhost:3000/pingg', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const res = await createFetchHandlerCaller({
@@ -112,6 +112,7 @@ describe('fetch adapter', () => {
 
     const req = new Request('https://localhost:3000/ping', {
       method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const res = await createFetchHandlerCaller({
@@ -141,6 +142,7 @@ describe('fetch adapter', () => {
     const req = new Request('https://localhost:3000/echo', {
       method: 'POST',
       body: JSON.stringify('Lily'),
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const res = await createFetchHandlerCaller({
@@ -194,23 +196,14 @@ describe('fetch adapter', () => {
 
     const body = (await res.json()) as OpenApiErrorResponse;
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(415);
     expect(body).toEqual(
       expect.objectContaining({
-        message: 'Input validation failed',
-        code: 'BAD_REQUEST',
-        issues: [
-          {
-            code: 'invalid_type',
-            expected: 'string',
-            message: 'Required',
-            path: ['payload'],
-            received: 'undefined',
-          },
-        ],
+        message: 'Unsupported content-type "text/plain',
+        code: 'UNSUPPORTED_MEDIA_TYPE',
       }),
     );
-    expect(createContextMock).toHaveBeenCalledTimes(1);
+    expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
   });
@@ -410,6 +403,7 @@ describe('fetch adapter', () => {
     {
       const req = new Request('https://localhost:3000/ping', {
         method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
       const res = await createFetchHandlerCaller({
         router: appRouter,
@@ -429,6 +423,7 @@ describe('fetch adapter', () => {
     {
       const req = new Request('https://localhost:3000/ping', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
       const res = await createFetchHandlerCaller({
         router: appRouter,
@@ -580,6 +575,7 @@ describe('fetch adapter', () => {
 
     const req = new Request('https://localhost:3000/any-endpoint', {
       method: 'HEAD',
+      headers: { 'Content-Type': 'application/json' },
     });
     const res = await createFetchHandlerCaller({
       router: appRouter,
@@ -850,6 +846,7 @@ describe('fetch adapter', () => {
 
     const req = new Request('https://localhost:3000/echo-delete?payload=mcampa', {
       method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const res = await createFetchHandlerCaller({
@@ -921,6 +918,7 @@ describe('fetch adapter', () => {
     {
       const req = new Request('https://localhost:3000/custom-error', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
 
       const res = await createFetchHandlerCaller({
@@ -947,6 +945,7 @@ describe('fetch adapter', () => {
     {
       const req = new Request('https://localhost:3000/custom-trpc-error', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
 
       const res = await createFetchHandlerCaller({
@@ -997,6 +996,8 @@ describe('fetch adapter', () => {
 
     const req = new Request('https://localhost:3000/custom-formatted-error', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
     });
 
     const res = await createFetchHandlerCaller({
@@ -1328,10 +1329,10 @@ describe('fetch adapter', () => {
 
     const body = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(body).toEqual({ result: 'Hello World' });
-    expect(createContextMock).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(415);
+    expect(body).toEqual(expect.objectContaining({ code: 'UNSUPPORTED_MEDIA_TYPE' }));
+    expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
-    expect(onErrorMock).toHaveBeenCalledTimes(0);
+    expect(onErrorMock).toHaveBeenCalledTimes(1);
   });
 });
