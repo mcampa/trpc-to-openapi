@@ -37,5 +37,5 @@ module.exports = {
       rules: {},
     },
   ],
-  ignorePatterns: ['rename.js'],
+  ignorePatterns: ['rename.js', 'dist/'],
 };

@@ -11,8 +11,6 @@ import {
 } from './node-http/core';
 
 export type CreateOpenApiNuxtHandlerOptions<TRouter extends OpenApiRouter> = Omit<
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   CreateOpenApiNodeHttpHandlerOptions<TRouter, NodeIncomingMessage, NodeServerResponse>,
   'maxBodySize'
 >;

@@ -1,13 +1,12 @@
 import { OpenApiBuilder } from 'openapi3-ts/oas31';
 
 import {
-  // CreateOpenApiAwsLambdaHandlerOptions,
   CreateOpenApiExpressMiddlewareOptions,
   CreateOpenApiFastifyPluginOptions,
   CreateOpenApiFetchHandlerOptions,
   CreateOpenApiHttpHandlerOptions,
   CreateOpenApiNextHandlerOptions,
-  CreateOpenApiNuxtHandlerOptions, // createOpenApiAwsLambdaHandler,
+  CreateOpenApiNuxtHandlerOptions,
   createOpenApiExpressMiddleware,
   createOpenApiFetchHandler,
   createOpenApiHttpHandler,
@@ -32,7 +31,6 @@ import {
 import { ZodTypeLikeString, ZodTypeLikeVoid } from './utils/zod';
 
 export {
-  // CreateOpenApiAwsLambdaHandlerOptions,
   CreateOpenApiExpressMiddlewareOptions,
   CreateOpenApiHttpHandlerOptions,
   CreateOpenApiNextHandlerOptions,
@@ -44,7 +42,6 @@ export {
   createOpenApiHttpHandler,
   createOpenApiNextHandler,
   createOpenApiNuxtHandler,
-  // createOpenApiAwsLambdaHandler,
   fastifyTRPCOpenApiPlugin,
   generateOpenApiDocument,
   errorResponseObject,

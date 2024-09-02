@@ -11,6 +11,7 @@
 
 ## **[OpenAPI](https://swagger.io/specification/) support for [tRPC](https://trpc.io/)** 🧩
 
+- tRPC 11 only 👈
 - Easy REST endpoints for your tRPC procedures.
 - Perfect for incremental adoption.
 - Supports all OpenAPI versions.

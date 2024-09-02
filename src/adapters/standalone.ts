@@ -8,8 +8,6 @@ import {
 } from './node-http/core';
 
 export type CreateOpenApiHttpHandlerOptions<TRouter extends OpenApiRouter> =
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   CreateOpenApiNodeHttpHandlerOptions<TRouter, IncomingMessage, ServerResponse>;
 
 export const createOpenApiHttpHandler = <TRouter extends OpenApiRouter>(

@@ -106,10 +106,6 @@ export const createOpenApiNodeHttpHandler = <
         });
       }
 
-      // console.log({
-      //   IncomingMessage: req instanceof IncomingMessage,
-      //   Request: req instanceof Request,
-      // });
       info = getRequestInfo({
         req:
           req instanceof Request

@@ -5,10 +5,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 
 import { OpenApiRouter } from '../types';
 import { normalizePath } from '../utils/path';
-import {
-  CreateOpenApiNodeHttpHandlerOptions,
-  createOpenApiNodeHttpHandler,
-} from './node-http/core';
+import { createOpenApiNodeHttpHandler } from './node-http/core';
 
 export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Omit<
   FetchHandlerOptions<TRouter>,
@@ -93,29 +90,21 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
   const url = new URL(opts.req.url.replace(opts.endpoint, ''));
   const req: Request = await createRequestProxy(opts.req, url.toString());
 
-  // console.log(
-  //   {
-  //     IncomingMessage: req instanceof IncomingMessage,
-  //     Request: req instanceof Request,
-  //   },
-  //   {
-  //     IncomingMessage: opts.req instanceof IncomingMessage,
-  //     Request: opts.req instanceof Request,
-  //   },
-  // );
   const createContext = () => {
     if (opts.createContext) {
-      return opts.createContext({
-        req: opts.req,
-        resHeaders,
-        info: getRequestInfo({
-          req: req as unknown as Request,
-          path: decodeURIComponent(normalizePath(url.pathname)),
-          router: opts.router,
-          searchParams: url.searchParams,
-          headers: req.headers,
-        }),
-      });
+      return (
+        opts.createContext({
+          req: opts.req,
+          resHeaders,
+          info: getRequestInfo({
+            req: req as unknown as Request,
+            path: decodeURIComponent(normalizePath(url.pathname)),
+            router: opts.router,
+            searchParams: url.searchParams,
+            headers: req.headers,
+          }),
+        }) ?? {}
+      );
     }
     return () => ({});
   };

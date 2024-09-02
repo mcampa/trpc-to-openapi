@@ -25,7 +25,7 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     }
     const path = normalizePath(openapi.path);
     const pathRegExp = getPathRegExp(path);
-    procedureCache.get(method)!.set(pathRegExp, {
+    procedureCache.get(method)?.set(pathRegExp, {
       type: procedure._def.type,
       path: queryPath,
       procedure,
@@ -43,7 +43,7 @@ export const createProcedureCache = (router: OpenApiRouter) => {
       return undefined;
     }
 
-    const procedure = procedureMethodCache.get(procedureRegExp)!;
+    const procedure = procedureMethodCache.get(procedureRegExp);
     const pathInput = procedureRegExp.exec(path)?.groups ?? {};
 
     return { procedure, pathInput };

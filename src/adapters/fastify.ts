@@ -43,7 +43,7 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
 
           return reply.header(key, value);
         },
-        end: (body: any) => reply.send(body), // eslint-disable-line @typescript-eslint/no-explicit-any
+        end: (body: any) => reply.send(body),
       }),
     );
   });
