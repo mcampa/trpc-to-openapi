@@ -60,6 +60,9 @@ const createOpenApiNuxtHandlerCaller = <TRouter extends OpenApiRouter>(
         body: req.body,
         method: req.method,
         url: req.url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       const mockRes = httpMocks.createResponse({
         req: mockReq,
