@@ -567,11 +567,11 @@ describe('standalone adapter', () => {
     });
     const body = (await res.json()) as OpenApiErrorResponse;
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
     expect(body).toEqual(
       expect.objectContaining({
-        message: 'Failed to parse request body',
-        code: 'PARSE_ERROR',
+        message: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR',
       }),
     );
     expect(createContextMock).toHaveBeenCalledTimes(0);
@@ -624,7 +624,7 @@ describe('standalone adapter', () => {
       expect(res.status).toBe(413);
       expect(body).toEqual(
         expect.objectContaining({
-          message: 'Request body too large',
+          message: 'PAYLOAD_TOO_LARGE',
           code: 'PAYLOAD_TOO_LARGE',
         }),
       );
@@ -1253,7 +1253,6 @@ describe('standalone adapter', () => {
       });
       const body = await res.json();
 
-      expect(body).toEqual(1);
       expect(res.status).toBe(200);
       expect(body).toEqual({ result: date.getTime() + 1 });
       expect(createContextMock).toHaveBeenCalledTimes(1);

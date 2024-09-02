@@ -38,6 +38,9 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string>
 const BODY_100_KB = 100000;
 export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): Promise<any> => {
   if ('body' in req) {
+    if (req.body instanceof ReadableStream) {
+      return new Response(req.body as ReadableStream<Buffer | Uint8Array | string | null>).json();
+    }
     return req.body;
   }
 

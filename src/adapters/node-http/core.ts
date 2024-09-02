@@ -81,10 +81,12 @@ export const createOpenApiNodeHttpHandler = <
     const reqUrl = req.url!;
     const url = new URL(reqUrl.startsWith('/') ? `http://127.0.0.1${reqUrl}` : reqUrl);
     const path = normalizePath(url.pathname);
-    const { procedure, pathInput } = getProcedure(method, path) ?? {};
     let input: any = undefined;
     let ctx: any = undefined;
     let data: any = undefined;
+    let info: any = undefined;
+
+    const { procedure, pathInput } = getProcedure(method, path) ?? {};
 
     try {
       if (!procedure) {
@@ -104,6 +106,18 @@ export const createOpenApiNodeHttpHandler = <
         });
       }
 
+      // console.log({
+      //   IncomingMessage: req instanceof IncomingMessage,
+      //   Request: req instanceof Request,
+      // });
+      info = getRequestInfo({
+        req: req as unknown as Request,
+        path: decodeURIComponent(path),
+        router,
+        searchParams: url.searchParams,
+        headers: req.headers as unknown as Headers,
+      });
+
       const useBody = acceptsRequestBody(method);
       const inputParser = getInputOutputParsers(procedure.procedure).inputParser as ZodTypeAny;
       const unwrappedSchema = unwrapZodType(inputParser, true);
@@ -120,18 +134,6 @@ export const createOpenApiNodeHttpHandler = <
       if (zodSupportsCoerce && instanceofZodTypeObject(unwrappedSchema)) {
         coerceSchema(unwrappedSchema);
       }
-
-      // console.log({
-      //   IncomingMessage: req instanceof IncomingMessage,
-      //   Request: req instanceof Request,
-      // });
-      const info = getRequestInfo({
-        req: req as unknown as Request,
-        path: decodeURIComponent(path),
-        router,
-        searchParams: url.searchParams,
-        headers: req.headers as unknown as Headers,
-      });
 
       ctx = await createContext?.({ req, res, info });
       const caller = router.createCaller(ctx);
@@ -176,7 +178,7 @@ export const createOpenApiNodeHttpHandler = <
         ctx,
         data: [data],
         errors: [error],
-        info: undefined,
+        info,
         eagerGeneration: true,
       });
 
