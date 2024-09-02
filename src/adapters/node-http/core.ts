@@ -4,9 +4,9 @@ import {
   type NodeHTTPHandlerOptions,
   type NodeHTTPRequest,
   type NodeHTTPResponse,
+  incomingMessageToRequest,
 } from '@trpc/server/adapters/node-http';
 import { getErrorShape, getRequestInfo } from '@trpc/server/unstable-core-do-not-import';
-import { IncomingMessage } from 'http';
 import cloneDeep from 'lodash.clonedeep';
 import { ZodError, ZodTypeAny } from 'zod';
 
@@ -111,7 +111,12 @@ export const createOpenApiNodeHttpHandler = <
       //   Request: req instanceof Request,
       // });
       info = getRequestInfo({
-        req: req as unknown as Request,
+        req:
+          req instanceof Request
+            ? req
+            : incomingMessageToRequest(req, {
+                maxBodySize: maxBodySize ?? null,
+              }),
         path: decodeURIComponent(path),
         router,
         searchParams: url.searchParams,

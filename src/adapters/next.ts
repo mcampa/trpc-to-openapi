@@ -8,12 +8,8 @@ import {
   createOpenApiNodeHttpHandler,
 } from './node-http/core';
 
-export type CreateOpenApiNextHandlerOptions<TRouter extends OpenApiRouter> = Omit<
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  CreateOpenApiNodeHttpHandlerOptions<TRouter, NextApiRequest, NextApiResponse>,
-  'maxBodySize'
->;
+export type CreateOpenApiNextHandlerOptions<TRouter extends OpenApiRouter> =
+  CreateOpenApiNodeHttpHandlerOptions<TRouter, NextApiRequest, NextApiResponse>;
 
 export const createOpenApiNextHandler = <TRouter extends OpenApiRouter>(
   opts: CreateOpenApiNextHandlerOptions<TRouter>,
