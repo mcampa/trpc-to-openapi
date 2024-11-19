@@ -31,7 +31,10 @@ export const getParameterObjects = (
   pathParameters: string[],
   headersSchema: AnyZodObject | undefined,
   inType: 'all' | 'path' | 'query',
-): ZodOpenApiParameters | undefined => {
+): ZodOpenApiParameters | undefined => {  
+  if (pathParameters.length === 0)
+    return { header: headersSchema, path: z.object({}), query: z.object({}) };
+
   const shape = schema.shape;
   const shapeKeys = Object.keys(shape);
 
