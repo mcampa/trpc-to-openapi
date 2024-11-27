@@ -11,7 +11,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "swagger-ui-express": "^4.6.3",
-    "uuid": "^9.0.0",
+    "uuid": "^11.0.3",
     "zod": "^3.21.4"
   },
   "devDependencies": {
