@@ -79,7 +79,7 @@
     "node-fetch": "^2.6.11",
     "openapi-schema-validator": "^12.1.1",
     "prettier": "^3.4.1",
-    "rimraf": "^5.0.1",
+    "rimraf": "^6.0.1",
     "superjson": "^1.12.3",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
