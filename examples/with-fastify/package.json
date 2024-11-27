@@ -9,7 +9,7 @@
     "@fastify/cors": "^8.2.1",
     "@fastify/swagger": "^9.4.0",
     "@trpc/server": "^10.27.1",
-    "fastify": "^4.17.0",
+    "fastify": "^5.1.0",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^9.0.0",
     "zod": "^3.21.4"
