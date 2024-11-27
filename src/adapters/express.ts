@@ -7,8 +7,6 @@ import {
 } from './node-http/core';
 
 export type CreateOpenApiExpressMiddlewareOptions<TRouter extends OpenApiRouter> =
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   CreateOpenApiNodeHttpHandlerOptions<TRouter, Request, Response>;
 
 export const createOpenApiExpressMiddleware = <TRouter extends OpenApiRouter>(

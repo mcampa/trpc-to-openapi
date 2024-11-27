@@ -42,6 +42,7 @@
     "test": "tsc --noEmit && jest --verbose",
     "lint": "eslint . --ext .ts",
     "lint-fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write ./src ./test ./examples",
     "build": "npm test && rimraf dist && npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc -p tsconfig.build.cjs.json",
     "build:esm": "tsc -p tsconfig.build.esm.json",

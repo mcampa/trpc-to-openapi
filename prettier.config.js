@@ -9,7 +9,4 @@ module.exports = {
   singleQuote: true,
   trailingComma: 'all',
   endOfLine: 'lf',
-  importOrder: ['__', '<THIRD_PARTY_MODULES>', '^[./]'],
-  importOrderSeparation: true,
-  importOrderSortSpecifiers: true,
 };

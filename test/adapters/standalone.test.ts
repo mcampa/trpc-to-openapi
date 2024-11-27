@@ -444,7 +444,9 @@ describe('standalone adapter', () => {
   });
 
   test('with createContext', async () => {
-    type Context = { id: 1234567890 };
+    interface Context {
+      id: 1234567890;
+    }
 
     const t2 = initTRPC.meta<OpenApiMeta>().context<Context>().create();
 

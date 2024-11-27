@@ -213,9 +213,9 @@ export const getResponsesObject = (
         schema: instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodVoid)
           ? {}
           : instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodNever) ||
-            instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodUndefined)
-          ? { not: {} }
-          : schema,
+              instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodUndefined)
+            ? { not: {} }
+            : schema,
       },
     },
   },
