@@ -107,8 +107,8 @@ export const createOpenApiNodeHttpHandler = <
           req instanceof Request
             ? req
             : incomingMessageToRequest(req, {
-                maxBodySize: maxBodySize ?? null,
-              }),
+              maxBodySize: maxBodySize ?? null,
+            }),
         path: decodeURIComponent(path),
         router,
         searchParams: url.searchParams,
@@ -141,7 +141,8 @@ export const createOpenApiNodeHttpHandler = <
         caller as any,
       ) as OpenApiProcedure;
 
-      data = await procedureFn(input);
+      const { data: _, ...producdureData } = await procedureFn(input);
+      data = producdureData;
 
       const meta = responseMeta?.({
         type: procedure.type,
