@@ -106,7 +106,7 @@ export const createOpenApiNodeHttpHandler = <
         req:
           req instanceof Request
             ? req
-            : incomingMessageToRequest(req, {
+            : incomingMessageToRequest(req, res, {
                 maxBodySize: maxBodySize ?? null,
               }),
         path: decodeURIComponent(path),
