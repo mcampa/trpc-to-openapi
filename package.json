@@ -57,7 +57,7 @@
     "co-body": "^6.1.0",
     "h3": "^1.6.4",
     "lodash.clonedeep": "^4.5.0",
-    "openapi3-ts": "4.3.3"
+    "openapi3-ts": "4.4.0"
   },
   "devDependencies": {
     "@trpc/client": "^11.0.0-rc.648",
