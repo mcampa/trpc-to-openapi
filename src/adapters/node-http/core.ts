@@ -7,7 +7,6 @@ import {
   incomingMessageToRequest,
 } from '@trpc/server/adapters/node-http';
 import { getErrorShape, getRequestInfo } from '@trpc/server/unstable-core-do-not-import';
-import cloneDeep from 'lodash.clonedeep';
 import { ZodArray, ZodError, ZodTypeAny } from 'zod';
 
 import { generateOpenApiDocument } from '../../generator';
@@ -51,7 +50,7 @@ export const createOpenApiNodeHttpHandler = <
 >(
   opts: CreateOpenApiNodeHttpHandlerOptions<TRouter, TRequest, TResponse>,
 ) => {
-  const router = cloneDeep(opts.router);
+  const router = Object.assign({}, opts.router);
 
   // Validate router
   if (process.env.NODE_ENV !== 'production') {

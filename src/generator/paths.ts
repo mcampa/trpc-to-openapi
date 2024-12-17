@@ -1,5 +1,4 @@
 import { TRPCError } from '@trpc/server';
-import cloneDeep from 'lodash.clonedeep';
 import { z } from 'zod';
 import {
   ZodOpenApiParameters,
@@ -35,7 +34,7 @@ export const getOpenApiPathsObject = (
   securitySchemeNames: string[],
 ): ZodOpenApiPathsObject => {
   const pathsObject: ZodOpenApiPathsObject = {};
-  const procedures = cloneDeep(appRouter._def.procedures);
+  const procedures = Object.assign({}, appRouter._def.procedures);
 
   forEachOpenApiProcedure(procedures, ({ path: procedurePath, type, procedure, openapi }) => {
     const procedureName = `${type}.${procedurePath}`;
