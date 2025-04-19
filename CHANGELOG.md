@@ -1,5 +1,8 @@
 ## Changelog
 
+- v2.2.0
+  - Upgrade to tRPC 11.1.0
+
 - v2.1.5
   - fix(fastify): send raw request in http handler https://github.com/mcampa/trpc-to-openapi/pull/63. Contribution by [@meriadec](https://github.com/meriadec)
 
