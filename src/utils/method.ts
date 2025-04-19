@@ -1,3 +1,4 @@
+import { incomingMessageToRequest, NodeHTTPResponse } from '@trpc/server/adapters/node-http';
 import { NodeHTTPRequest, OpenApiMethod } from '../types';
 
 export const acceptsRequestBody = (method: OpenApiMethod | 'HEAD') => {
@@ -13,4 +14,18 @@ export const getContentType = (req: NodeHTTPRequest | Request): string | undefin
   }
 
   return req.headers['content-type'] ?? undefined;
+};
+
+export const getRequestSignal = (
+  req: NodeHTTPRequest | Request,
+  res: NodeHTTPResponse,
+  maxBodySize?: number,
+) => {
+  if (req instanceof Request) {
+    return req.signal;
+  }
+
+  return incomingMessageToRequest(req, res, {
+    maxBodySize: maxBodySize ?? null,
+  }).signal;
 };

@@ -3,13 +3,8 @@ import { TRPCError } from '@trpc/server';
 import {
   type NodeHTTPHandlerOptions,
   type NodeHTTPResponse,
-  incomingMessageToRequest,
 } from '@trpc/server/adapters/node-http';
-import {
-  getErrorShape,
-  getRequestInfo,
-  TRPCRequestInfo,
-} from '@trpc/server/unstable-core-do-not-import';
+import { getErrorShape, TRPCRequestInfo } from '@trpc/server/unstable-core-do-not-import';
 import { ZodArray, ZodError, ZodTypeAny } from 'zod';
 import { NodeHTTPRequest } from '../../types';
 import { generateOpenApiDocument } from '../../generator';
@@ -31,6 +26,7 @@ import {
   unwrapZodType,
   zodSupportsCoerce,
   getContentType,
+  getRequestSignal,
 } from '../../utils';
 import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
 import { getBody, getQuery } from './input';
@@ -140,20 +136,13 @@ export const createOpenApiNodeHttpHandler = <
         coerceSchema(unwrappedSchema);
       }
 
-      const request =
-        req instanceof Request
-          ? req
-          : incomingMessageToRequest(req, res, {
-              maxBodySize: maxBodySize ?? null,
-            });
-
       info = {
         isBatchCall: false,
         accept: null,
         calls: [],
         type: procedure.type,
         connectionParams: null,
-        signal: request.signal,
+        signal: getRequestSignal(req, res, maxBodySize),
         url,
       };
 
