@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
-import { NodeHTTPRequest } from '@trpc/server/adapters/node-http';
 import parse from 'co-body';
+import { NodeHTTPRequest } from '../../types';
 
 export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string | string[]> => {
   const query: Record<string, string | string[]> = {};
@@ -29,7 +29,7 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string 
   return query;
 };
 
-const BODY_100_KB = 100000;
+const BODY_100_KB = 100_000;
 export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): Promise<any> => {
   if ('body' in req) {
     if (req.body instanceof ReadableStream) {

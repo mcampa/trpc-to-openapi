@@ -2,13 +2,16 @@ import { type HTTPHeaders } from '@trpc/client';
 import { TRPCError } from '@trpc/server';
 import {
   type NodeHTTPHandlerOptions,
-  type NodeHTTPRequest,
   type NodeHTTPResponse,
   incomingMessageToRequest,
 } from '@trpc/server/adapters/node-http';
-import { getErrorShape, getRequestInfo } from '@trpc/server/unstable-core-do-not-import';
+import {
+  getErrorShape,
+  getRequestInfo,
+  TRPCRequestInfo,
+} from '@trpc/server/unstable-core-do-not-import';
 import { ZodArray, ZodError, ZodTypeAny } from 'zod';
-
+import { NodeHTTPRequest } from '../../types';
 import { generateOpenApiDocument } from '../../generator';
 import {
   OpenApiErrorResponse,
@@ -27,6 +30,7 @@ import {
   instanceofZodTypeObject,
   unwrapZodType,
   zodSupportsCoerce,
+  getContentType,
 } from '../../utils';
 import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
 import { getBody, getQuery } from './input';
@@ -78,8 +82,8 @@ export const createOpenApiNodeHttpHandler = <
     const path = normalizePath(url.pathname);
     let input: any = undefined;
     let ctx: any = undefined;
+    let info: TRPCRequestInfo | undefined = undefined;
     let data: any = undefined;
-    let info: any = undefined;
 
     const { procedure, pathInput } = getProcedure(method, path) ?? {};
 
@@ -101,20 +105,18 @@ export const createOpenApiNodeHttpHandler = <
         });
       }
 
-      info = getRequestInfo({
-        req:
-          req instanceof Request
-            ? req
-            : incomingMessageToRequest(req, res, {
-                maxBodySize: maxBodySize ?? null,
-              }),
-        path: decodeURIComponent(path),
-        router,
-        searchParams: url.searchParams,
-        headers: req.headers as unknown as Headers,
-      });
-
+      const contentType = getContentType(req);
       const useBody = acceptsRequestBody(method);
+
+      if (useBody && !contentType?.startsWith('application/json')) {
+        throw new TRPCError({
+          code: 'UNSUPPORTED_MEDIA_TYPE',
+          message: contentType
+            ? `Unsupported content-type "${contentType}`
+            : 'Missing content-type header',
+        });
+      }
+
       const inputParser = getInputOutputParsers(procedure.procedure).inputParser as ZodTypeAny;
       const unwrappedSchema = unwrapZodType(inputParser, true);
 
@@ -137,6 +139,23 @@ export const createOpenApiNodeHttpHandler = <
         }
         coerceSchema(unwrappedSchema);
       }
+
+      const request =
+        req instanceof Request
+          ? req
+          : incomingMessageToRequest(req, res, {
+              maxBodySize: maxBodySize ?? null,
+            });
+
+      info = {
+        isBatchCall: false,
+        accept: null,
+        calls: [],
+        type: procedure.type,
+        connectionParams: null,
+        signal: request.signal,
+        url,
+      };
 
       ctx = await createContext?.({ req, res, info });
       const caller = router.createCaller(ctx);
@@ -205,7 +224,7 @@ export const createOpenApiNodeHttpHandler = <
         ...errorShape, // Pass the error through
         message: isInputValidationError
           ? 'Input validation failed'
-          : errorShape?.message ?? error.message ?? 'An error occurred',
+          : (errorShape?.message ?? error.message ?? 'An error occurred'),
         code: error.code,
         issues: isInputValidationError ? (error.cause as ZodError).errors : undefined,
       };

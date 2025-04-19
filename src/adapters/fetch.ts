@@ -1,10 +1,8 @@
 import { TRPCError } from '@trpc/server';
 import { FetchHandlerOptions } from '@trpc/server/adapters/fetch';
-import { getRequestInfo } from '@trpc/server/unstable-core-do-not-import';
 import { IncomingMessage, ServerResponse } from 'http';
 
 import { OpenApiRouter } from '../types';
-import { normalizePath } from '../utils';
 import { createOpenApiNodeHttpHandler } from './node-http';
 
 export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Omit<
@@ -90,64 +88,38 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
   const url = new URL(opts.req.url.replace(opts.endpoint, ''));
   const req: Request = await createRequestProxy(opts.req, url.toString());
 
-  const createContext = () => {
-    if (opts.createContext) {
-      return (
-        opts.createContext({
-          req: opts.req,
-          resHeaders,
-          info: getRequestInfo({
-            req: req as unknown as Request,
-            path: decodeURIComponent(normalizePath(url.pathname)),
-            router: opts.router,
-            searchParams: url.searchParams,
-            headers: req.headers,
-          }),
-        }) ?? {}
-      );
-    }
-    return () => ({});
-  };
-
-  const openApiHttpHandler = createOpenApiNodeHttpHandler({
-    router: opts.router,
-    createContext,
-    // @ts-expect-error FIXME
-    onError: opts.onError,
-    // @ts-expect-error FIXME
-    responseMeta: opts.responseMeta,
-  }); // as CreateOpenApiNodeHttpHandlerOptions<TRouter, any, any>);
+  // @ts-expect-error FIXME
+  const openApiHttpHandler = createOpenApiNodeHttpHandler(opts);
 
   return new Promise<Response>((resolve) => {
     let statusCode: number;
 
-    return openApiHttpHandler(
-      req as unknown as IncomingMessage,
-      {
-        setHeader: (key: string, value: string | readonly string[]) => {
-          if (typeof value === 'string') {
-            resHeaders.set(key, value);
-          } else {
-            for (const v of value) {
-              resHeaders.append(key, v);
-            }
+    const res = {
+      setHeader: (key: string, value: string | readonly string[]) => {
+        if (typeof value === 'string') {
+          resHeaders.set(key, value);
+        } else {
+          for (const v of value) {
+            resHeaders.append(key, v);
           }
-        },
-        get statusCode() {
-          return statusCode;
-        },
-        set statusCode(code: number) {
-          statusCode = code;
-        },
-        end: (body: string) => {
-          resolve(
-            new Response(body, {
-              headers: resHeaders,
-              status: statusCode,
-            }),
-          );
-        },
-      } as unknown as ServerResponse,
-    );
+        }
+      },
+      get statusCode() {
+        return statusCode;
+      },
+      set statusCode(code: number) {
+        statusCode = code;
+      },
+      end: (body: string) => {
+        resolve(
+          new Response(body, {
+            headers: resHeaders,
+            status: statusCode,
+          }),
+        );
+      },
+    } as unknown as ServerResponse;
+
+    return openApiHttpHandler(req as unknown as IncomingMessage, res);
   });
 };

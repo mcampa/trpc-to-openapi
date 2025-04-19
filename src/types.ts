@@ -6,6 +6,7 @@ import type {
   Router,
   RouterRecord,
 } from '@trpc/server/unstable-core-do-not-import';
+import { IncomingMessage } from 'http';
 import type { AnyZodObject, ZodIssue } from 'zod';
 
 export { type OpenAPIObject, type SecuritySchemeObject } from 'openapi3-ts/oas31';
@@ -67,3 +68,8 @@ export interface OpenApiErrorResponse {
 }
 
 export type OpenApiResponse<D = any> = OpenApiSuccessResponse<D> | OpenApiErrorResponse;
+
+export type NodeHTTPRequest = IncomingMessage & {
+  body?: unknown;
+  query?: unknown;
+};

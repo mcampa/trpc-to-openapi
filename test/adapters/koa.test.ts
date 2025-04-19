@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 import { initTRPC } from '@trpc/server';
 import Koa from 'koa';
 import fetch from 'node-fetch';
@@ -79,10 +78,9 @@ describe('koa adapter', () => {
 
     {
       const res = await fetch(`${url}/say-hello?name=Lily`, { method: 'GET' });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -95,10 +93,9 @@ describe('koa adapter', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Lily' }),
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -107,10 +104,9 @@ describe('koa adapter', () => {
     }
     {
       const res = await fetch(`${url}/say/hello?name=Lily`, { method: 'GET' });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);

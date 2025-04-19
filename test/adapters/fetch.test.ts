@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import {
   CreateOpenApiFetchHandlerOptions,
-  OpenApiErrorResponse,
   OpenApiMeta,
   OpenApiRouter,
   createOpenApiFetchHandler,
@@ -34,11 +33,11 @@ const createFetchHandlerCaller = <TRouter extends OpenApiRouter>(
     responseMeta: handlerOpts.responseMeta ?? responseMetaMock,
     onError: handlerOpts.onError ?? onErrorMock,
     req: handlerOpts.req,
-  } as any);
+  } as CreateOpenApiFetchHandlerOptions<TRouter>);
   return openApiHttpHandler;
 };
 
-const t = initTRPC.meta<OpenApiMeta>().context<any>().create();
+const t = initTRPC.meta<OpenApiMeta>().context().create();
 
 describe('fetch adapter', () => {
   afterEach(() => {
@@ -91,10 +90,10 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(404);
-    expect(body).toEqual(expect.objectContaining({ message: 'Not found', code: 'NOT_FOUND' }));
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ message: 'Not found', code: 'NOT_FOUND' }),
+    );
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
@@ -120,10 +119,10 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(404);
-    expect(body).toEqual(expect.objectContaining({ message: 'Not found', code: 'NOT_FOUND' }));
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ message: 'Not found', code: 'NOT_FOUND' }),
+    );
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);
@@ -149,10 +148,9 @@ describe('fetch adapter', () => {
       endpoint: '/',
       req,
     });
-    const body = (await res.json()) as OpenApiErrorResponse;
 
     expect(res.status).toBe(400);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Input validation failed',
         code: 'BAD_REQUEST',
@@ -193,10 +191,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(415);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Unsupported content-type "text/plain',
         code: 'UNSUPPORTED_MEDIA_TYPE',
@@ -226,10 +222,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(400);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Input validation failed',
         code: 'BAD_REQUEST',
@@ -270,10 +264,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(400);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Input validation failed',
         code: 'BAD_REQUEST',
@@ -315,10 +307,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(500);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Output validation failed',
         code: 'INTERNAL_SERVER_ERROR',
@@ -354,10 +344,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -375,10 +364,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -409,10 +397,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual('pong');
+      expect(await res.json()).toEqual('pong');
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -429,10 +416,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual('pong');
+      expect(await res.json()).toEqual('pong');
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -457,15 +443,13 @@ describe('fetch adapter', () => {
       req,
     });
 
-    let body;
     try {
-      body = await res.json();
+      expect(await res.json()).toEqual(undefined);
     } catch (e) {
       // do nothing
     }
 
     expect(res.status).toBe(200);
-    expect(body).toEqual(undefined);
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -496,10 +480,8 @@ describe('fetch adapter', () => {
       createContext: (): Context => ({ id: 1234567890 }),
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(200);
-    expect(body).toEqual({
+    expect(await res.json()).toEqual({
       payload: 'mcampa',
       context: { id: 1234567890 },
     });
@@ -526,11 +508,9 @@ describe('fetch adapter', () => {
       responseMeta: () => ({ status: 202, headers: { 'x-custom': 'custom header' } }),
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(202);
     expect(res.headers.get('x-custom')).toBe('custom header');
-    expect(body).toEqual({
+    expect(await res.json()).toEqual({
       payload: 'mcampa',
       context: undefined,
     });
@@ -539,7 +519,7 @@ describe('fetch adapter', () => {
   });
 
   test('with skipped transformer', async () => {
-    const t2 = initTRPC.meta<OpenApiMeta>().context<any>().create({
+    const t2 = initTRPC.meta<OpenApiMeta>().context().create({
       transformer: superjson,
     });
 
@@ -560,10 +540,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(200);
-    expect(body).toEqual({
+    expect(await res.json()).toEqual({
       payload: 'mcampa',
     });
     expect(createContextMock).toHaveBeenCalledTimes(1);
@@ -611,10 +589,9 @@ describe('fetch adapter', () => {
       endpoint: '/',
       req,
     });
-    const body = (await res.json()) as OpenApiErrorResponse;
 
     expect(res.status).toBe(400);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Failed to parse request body',
         code: 'PARSE_ERROR',
@@ -644,10 +621,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(400);
-      expect(body).toEqual(
+      expect(await res.json()).toEqual(
         expect.objectContaining({
           message: 'Input validation failed',
           code: 'BAD_REQUEST',
@@ -687,10 +663,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily & Mario!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily & Mario!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -721,10 +696,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -741,10 +715,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -789,10 +762,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = await res.json();
-
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -812,10 +783,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = await res.json();
-
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -836,10 +805,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = await res.json();
-
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily Rose!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily Rose!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -865,10 +832,9 @@ describe('fetch adapter', () => {
       endpoint: '/',
       req,
     });
-    const body = (await res.json()) as OpenApiErrorResponse;
 
     expect(res.status).toBe(500);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Output validation failed',
         code: 'INTERNAL_SERVER_ERROR',
@@ -899,10 +865,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(200);
-    expect(body).toEqual({ payload: 'mcampa' });
+    expect(await res.json()).toEqual({ payload: 'mcampa' });
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -929,10 +893,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(200);
-    expect(body).toEqual({ payload: 'mcampa' });
+    expect(await res.json()).toEqual({ payload: 'mcampa' });
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -971,10 +933,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = (await res.json()) as OpenApiErrorResponse;
-
       expect(res.status).toBe(500);
-      expect(body).toEqual(
+      expect(await res.json()).toEqual(
         expect.objectContaining({
           message: 'Custom error message',
           code: 'INTERNAL_SERVER_ERROR',
@@ -997,10 +957,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = (await res.json()) as OpenApiErrorResponse;
 
       expect(res.status).toBe(499);
-      expect(body).toEqual(
+      expect(await res.json()).toEqual(
         expect.objectContaining({
           message: 'Custom TRPCError message',
           code: 'CLIENT_CLOSED_REQUEST',
@@ -1017,7 +976,7 @@ describe('fetch adapter', () => {
 
     const t2 = initTRPC
       .meta<OpenApiMeta>()
-      .context<any>()
+      .context()
       .create({
         errorFormatter: ({ error, shape }) => {
           errorFormatterMock();
@@ -1050,10 +1009,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = (await res.json()) as OpenApiErrorResponse;
-
     expect(res.status).toBe(500);
-    expect(body).toEqual(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         message: 'Custom formatted error message',
         code: 'INTERNAL_SERVER_ERROR',
@@ -1098,10 +1055,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ payload: 'one' });
+      expect(await res.json()).toEqual({ payload: 'one' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1118,10 +1074,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ payload: 'two' });
+      expect(await res.json()).toEqual({ payload: 'two' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1138,10 +1093,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ payload: 'three' });
+      expect(await res.json()).toEqual({ payload: 'three' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1168,10 +1122,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(200);
-    expect(body).toEqual({ fullName: 'Lily Rose' });
+    expect(await res.json()).toEqual({ fullName: 'Lily Rose' });
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1200,10 +1152,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(200);
-    expect(body).toEqual({ result: 'lolXXXlol' });
+    expect(await res.json()).toEqual({ result: 'lolXXXlol' });
     expect(createContextMock).toHaveBeenCalledTimes(1);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1240,10 +1190,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = await res.json();
-
       expect(res.status).toBe(200);
-      expect(body).toEqual({ result: 10 });
+      expect(await res.json()).toEqual({ result: 10 });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1282,10 +1230,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = await res.json();
-
       expect(res.status).toBe(200);
-      expect(body).toEqual({ result: 10 });
+      expect(await res.json()).toEqual({ result: 10 });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1306,10 +1252,8 @@ describe('fetch adapter', () => {
         req,
       });
 
-      const body = await res.json();
-
       expect(res.status).toBe(200);
-      expect(body).toEqual({ result: date.getTime() + 1 });
+      expect(await res.json()).toEqual({ result: date.getTime() + 1 });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1327,10 +1271,9 @@ describe('fetch adapter', () => {
         endpoint: '/',
         req,
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ result: 10 });
+      expect(await res.json()).toEqual({ result: 10 });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -1369,10 +1312,8 @@ describe('fetch adapter', () => {
       req,
     });
 
-    const body = await res.json();
-
     expect(res.status).toBe(415);
-    expect(body).toEqual(expect.objectContaining({ code: 'UNSUPPORTED_MEDIA_TYPE' }));
+    expect(await res.json()).toEqual(expect.objectContaining({ code: 'UNSUPPORTED_MEDIA_TYPE' }));
     expect(createContextMock).toHaveBeenCalledTimes(0);
     expect(responseMetaMock).toHaveBeenCalledTimes(1);
     expect(onErrorMock).toHaveBeenCalledTimes(1);

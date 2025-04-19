@@ -1,5 +1,4 @@
 import { TRPCError } from '@trpc/server';
-import { incomingMessageToRequest } from '@trpc/server/adapters/node-http';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { OpenApiErrorResponse, OpenApiRouter } from '../types';
@@ -48,15 +47,11 @@ export const createOpenApiNextHandler = <TRouter extends OpenApiRouter>(
       return;
     }
 
-    incomingMessageToRequest(
-      req,
+    if (!('once' in res)) {
       Object.assign(res, {
         once: () => undefined,
-      }),
-      {
-        maxBodySize: opts.maxBodySize ?? null,
-      },
-    );
+      });
+    }
 
     req.url = normalizePath(pathname);
     await openApiHttpHandler(req, res);

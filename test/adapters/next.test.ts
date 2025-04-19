@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/ban-types */
 import { initTRPC } from '@trpc/server';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { IncomingMessage } from 'http';
+import { IncomingHttpHeaders, IncomingMessage } from 'http';
 import { NextApiRequestCookies, NextApiRequestQuery } from 'next/dist/server/api-utils';
 import { Socket } from 'net';
 import { z } from 'zod';
@@ -18,8 +17,9 @@ type NextApiRequestOptions = Partial<NextApiRequestMock>;
 class NextApiRequestMock extends IncomingMessage implements NextApiRequest {
   public query: NextApiRequestQuery = {};
   public cookies: NextApiRequestCookies = {};
+  public headers: IncomingHttpHeaders = {};
   public env = {};
-  public body: any;
+  public body: unknown;
 
   constructor(options: NextApiRequestOptions) {
     super(new Socket());
@@ -63,7 +63,7 @@ const createOpenApiNextHandlerCaller = <TRouter extends OpenApiRouter>(
       headers: Record<string, any>;
       body: OpenApiResponse;
     }>(async (resolve, reject) => {
-      const headers = new Map();
+      const headers = new Headers();
       let body: any;
       const nextResponse = {
         statusCode: undefined,
@@ -95,7 +95,7 @@ const createOpenApiNextHandlerCaller = <TRouter extends OpenApiRouter>(
   };
 };
 
-const t = initTRPC.meta<OpenApiMeta>().context<any>().create();
+const t = initTRPC.meta<OpenApiMeta>().context().create();
 
 describe('next adapter', () => {
   afterEach(() => {
@@ -144,7 +144,7 @@ describe('next adapter', () => {
         method: 'POST',
         query: { trpc: 'say-hello' },
         body: { name: 'Lily' },
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
       });
 
       expect(res.statusCode).toBe(200);

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 import { initTRPC } from '@trpc/server';
 import express from 'express';
 import fetch from 'node-fetch';
@@ -80,10 +79,9 @@ describe('express adapter', () => {
 
     {
       const res = await fetch(`${url}/say-hello?name=Lily`, { method: 'GET' });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -96,10 +94,9 @@ describe('express adapter', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Lily' }),
       });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -108,10 +105,9 @@ describe('express adapter', () => {
     }
     {
       const res = await fetch(`${url}/say/hello?name=Lily`, { method: 'GET' });
-      const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body).toEqual({ greeting: 'Hello Lily!' });
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
@@ -135,10 +131,9 @@ describe('express adapter', () => {
     );
 
     const res = await fetch(`${url}/open-api/echo?payload=mcampa`, { method: 'GET' });
-    const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({
+    expect(await res.json()).toEqual({
       payload: 'mcampa',
     });
     expect(createContextMock).toHaveBeenCalledTimes(1);

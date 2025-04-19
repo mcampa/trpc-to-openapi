@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@trpc/server": "^10.27.1",
+    "@trpc/server": "^11.1.0",
     "zod": "^3.21.4"
   },
   "devDependencies": {
-    "@types/node": "^20.2.3",
-    "typescript": "^5.0.4"
+    "@types/node": "^22",
+    "typescript": "5.7.2"
   }
 }
