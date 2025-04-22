@@ -709,6 +709,16 @@ describe('generator', () => {
             "post": Object {
               "description": undefined,
               "operationId": "createUser",
+              "parameters": Array [
+                Object {
+                  "in": "query",
+                  "name": "input",
+                  "schema": Object {
+                    "default": "{}",
+                    "type": "string",
+                  },
+                },
+              ],
               "requestBody": Object {
                 "content": Object {
                   "application/json": Object {
@@ -813,6 +823,14 @@ describe('generator', () => {
                     "type": "string",
                   },
                 },
+                Object {
+                  "in": "query",
+                  "name": "input",
+                  "schema": Object {
+                    "default": "{}",
+                    "type": "string",
+                  },
+                },
               ],
               "responses": Object {
                 "200": Object {
@@ -891,6 +909,14 @@ describe('generator', () => {
                   "name": "id",
                   "required": true,
                   "schema": Object {
+                    "type": "string",
+                  },
+                },
+                Object {
+                  "in": "query",
+                  "name": "input",
+                  "schema": Object {
+                    "default": "{}",
                     "type": "string",
                   },
                 },
@@ -986,6 +1012,14 @@ describe('generator', () => {
                   "name": "id",
                   "required": true,
                   "schema": Object {
+                    "type": "string",
+                  },
+                },
+                Object {
+                  "in": "query",
+                  "name": "input",
+                  "schema": Object {
+                    "default": "{}",
                     "type": "string",
                   },
                 },
@@ -1210,6 +1244,16 @@ describe('generator', () => {
       Object {
         "description": undefined,
         "operationId": "createUser",
+        "parameters": Array [
+          Object {
+            "in": "query",
+            "name": "input",
+            "schema": Object {
+              "default": "{}",
+              "type": "string",
+            },
+          },
+        ],
         "requestBody": Object {
           "content": Object {
             "application/json": Object {
@@ -1319,13 +1363,10 @@ describe('generator', () => {
         "operationId": "getUser",
         "parameters": Array [
           Object {
-            "description": "User ID",
             "in": "query",
-            "name": "id",
-            "required": true,
+            "name": "input",
             "schema": Object {
-              "description": "User ID",
-              "format": "uuid",
+              "default": "{\\"id\\":\\"<string>\\"}",
               "type": "string",
             },
           },
@@ -1593,16 +1634,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "one",
+          "name": "input",
           "schema": Object {
-            "type": "string",
-          },
-        },
-        Object {
-          "in": "query",
-          "name": "two",
-          "required": true,
-          "schema": Object {
+            "default": "{\\"one\\":\\"<string>\\",\\"two\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -1624,15 +1658,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "one",
+          "name": "input",
           "schema": Object {
-            "type": "string",
-          },
-        },
-        Object {
-          "in": "query",
-          "name": "two",
-          "schema": Object {
+            "default": "{\\"one\\":\\"<string>\\",\\"two\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -1758,9 +1786,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "payload",
+          "name": "input",
           "schema": Object {
-            "default": "Lily",
+            "default": "{\\"payload\\":\\"Lily\\"}",
             "type": "string",
           },
         },
@@ -1942,9 +1970,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "age",
-          "required": true,
+          "name": "input",
           "schema": Object {
+            "default": "{\\"age\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -1976,10 +2004,10 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "payload",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "type": "number",
+            "default": "{\\"payload\\":\\"<number>\\"}",
+            "type": "string",
           },
         },
       ]
@@ -2013,10 +2041,10 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "payload",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "type": "number",
+            "default": "{\\"payload\\":\\"<number>\\"}",
+            "type": "string",
           },
         },
       ]
@@ -2064,20 +2092,10 @@ describe('generator', () => {
         Array [
           Object {
             "in": "query",
-            "name": "payload",
-            "required": true,
+            "name": "input",
             "schema": Object {
-              "anyOf": Array [
-                Object {
-                  "type": "string",
-                },
-                Object {
-                  "enum": Array [
-                    "Lily",
-                  ],
-                  "type": "string",
-                },
-              ],
+              "default": "{\\"payload\\":\\"<string>\\"}",
+              "type": "string",
             },
           },
         ]
@@ -2107,43 +2125,10 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "payload",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "allOf": Array [
-              Object {
-                "anyOf": Array [
-                  Object {
-                    "enum": Array [
-                      "a",
-                    ],
-                    "type": "string",
-                  },
-                  Object {
-                    "enum": Array [
-                      "b",
-                    ],
-                    "type": "string",
-                  },
-                ],
-              },
-              Object {
-                "anyOf": Array [
-                  Object {
-                    "enum": Array [
-                      "b",
-                    ],
-                    "type": "string",
-                  },
-                  Object {
-                    "enum": Array [
-                      "c",
-                    ],
-                    "type": "string",
-                  },
-                ],
-              },
-            ],
+            "default": "{\\"payload\\":\\"<intersection>\\"}",
+            "type": "string",
           },
         },
       ]
@@ -2165,9 +2150,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "payload",
-          "required": true,
+          "name": "input",
           "schema": Object {
+            "default": "{\\"payload\\":\\"<lazy>\\"}",
             "type": "string",
           },
         },
@@ -2190,12 +2175,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "payload",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "enum": Array [
-              "literal",
-            ],
+            "default": "{\\"payload\\":\\"literal\\"}",
             "type": "string",
           },
         },
@@ -2218,13 +2200,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "name",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "enum": Array [
-              "Lily",
-              "mcampa",
-            ],
+            "default": "{\\"name\\":\\"Lily\\"}",
             "type": "string",
           },
         },
@@ -2253,17 +2231,10 @@ describe('generator', () => {
         Array [
           Object {
             "in": "query",
-            "name": "names",
-            "required": true,
+            "name": "input",
             "schema": Object {
-              "items": Object {
-                "enum": Array [
-                  "Lily",
-                  "Mario",
-                ],
-                "type": "string",
-              },
-              "type": "array",
+              "default": "{\\"names\\":[\\"Lily\\"]}",
+              "type": "string",
             },
           },
         ]
@@ -2310,13 +2281,9 @@ describe('generator', () => {
         Array [
           Object {
             "in": "query",
-            "name": "name",
-            "required": true,
+            "name": "input",
             "schema": Object {
-              "enum": Array [
-                "Lily",
-                "mcampa",
-              ],
+              "default": "{\\"name\\":\\"Lily\\"}",
               "type": "string",
             },
           },
@@ -2429,9 +2396,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "id",
-          "required": true,
+          "name": "input",
           "schema": Object {
+            "default": "{\\"id\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -2467,9 +2434,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "id",
-          "required": true,
+          "name": "input",
           "schema": Object {
+            "default": "{\\"id\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -2508,9 +2475,18 @@ describe('generator', () => {
         "required": true,
       }
     `);
-    expect(openApiDocument.paths!['/query/post']!.post!.parameters).toMatchInlineSnapshot(
-      `undefined`,
-    );
+    expect(openApiDocument.paths!['/query/post']!.post!.parameters).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "in": "query",
+          "name": "input",
+          "schema": Object {
+            "default": "{}",
+            "type": "string",
+          },
+        },
+      ]
+    `);
   });
 
   test('with top-level preprocess', () => {
@@ -2533,9 +2509,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "id",
-          "required": true,
+          "name": "input",
           "schema": Object {
+            "default": "{\\"id\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -2598,9 +2574,9 @@ describe('generator', () => {
             "parameters": Array [
               Object {
                 "in": "query",
-                "name": "payload",
-                "required": true,
+                "name": "input",
                 "schema": Object {
+                  "default": "{\\"payload\\":\\"<string>\\"}",
                   "type": "string",
                 },
               },
@@ -2691,9 +2667,9 @@ describe('generator', () => {
             "parameters": Array [
               Object {
                 "in": "query",
-                "name": "payload",
-                "required": true,
+                "name": "input",
                 "schema": Object {
+                  "default": "{\\"payload\\":\\"<string>\\"}",
                   "type": "string",
                 },
               },
@@ -2784,9 +2760,9 @@ describe('generator', () => {
             "parameters": Array [
               Object {
                 "in": "query",
-                "name": "payload",
-                "required": true,
+                "name": "input",
                 "schema": Object {
+                  "default": "{\\"payload\\":\\"<string>\\"}",
                   "type": "string",
                 },
               },
@@ -2896,17 +2872,9 @@ describe('generator', () => {
       Array [
         Object {
           "in": "query",
-          "name": "id",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "type": "string",
-          },
-        },
-        Object {
-          "in": "query",
-          "name": "payload",
-          "required": true,
-          "schema": Object {
+            "default": "{\\"id\\":\\"<string>\\",\\"payload\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -3111,10 +3079,9 @@ describe('generator', () => {
         },
         Object {
           "in": "query",
-          "name": "greeting",
-          "required": true,
+          "name": "input",
           "schema": Object {
-            "example": "Hello",
+            "default": "{\\"greeting\\":\\"<string>\\"}",
             "type": "string",
           },
         },
@@ -3151,6 +3118,14 @@ describe('generator', () => {
           "required": true,
           "schema": Object {
             "example": "Lily",
+            "type": "string",
+          },
+        },
+        Object {
+          "in": "query",
+          "name": "input",
+          "schema": Object {
+            "default": "{}",
             "type": "string",
           },
         },
@@ -3244,9 +3219,9 @@ describe('generator', () => {
         },
         Object {
           "in": "query",
-          "name": "greeting",
-          "required": true,
+          "name": "input",
           "schema": Object {
+            "default": "{\\"greeting\\":\\"<string>\\"}",
             "type": "string",
           },
         },

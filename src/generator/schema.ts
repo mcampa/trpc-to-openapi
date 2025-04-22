@@ -26,6 +26,7 @@ import {
   zodSupportsCoerce,
 } from '../utils';
 import { HttpMethods } from './paths';
+import { queryPlaceholder } from '../utils/queryPlaceholder';
 
 extendZodWithOpenApi(z);
 
@@ -104,7 +105,17 @@ export const getParameterObjects = (
       { path: {} as Record<string, ZodTypeAny>, query: {} as Record<string, ZodTypeAny> },
     );
 
-  return { header: headersSchema, path: z.object(path), query: z.object(query) };
+  const placeholder = queryPlaceholder(z.object(query));
+
+  const querySchema = z.object({ 
+    input: z.string().default(JSON.stringify(placeholder)) 
+  });
+
+  return {
+    header: headersSchema,
+    path: z.object(path),
+    query: querySchema,
+  };
 };
 
 export const getRequestBodyObject = (
