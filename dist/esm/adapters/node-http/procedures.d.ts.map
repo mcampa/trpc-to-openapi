@@ -1,0 +1,1 @@
+{"version":3,"file":"procedures.d.ts","sourceRoot":"","sources":["../../../../src/adapters/node-http/procedures.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,aAAa,EAAE,gBAAgB,EAAE,aAAa,EAAE,MAAM,aAAa,CAAC;AAG7E,eAAO,MAAM,oBAAoB,WAAY,aAAa,cA8BxC,aAAa,GAAG,MAAM,QAAQ,MAAM;;cAxBxC,OAAO,GAAG,UAAU;cACpB,MAAM;mBACD,gBAAgB;;;;;aAsClC,CAAC"}
