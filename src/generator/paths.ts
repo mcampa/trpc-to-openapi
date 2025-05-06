@@ -7,7 +7,7 @@ import {
   extendZodWithOpenApi,
 } from 'zod-openapi';
 
-import { OpenApiRouter } from '../types';
+import { OpenApiMeta, OpenApiRouter } from '../types';
 import {
   acceptsRequestBody,
   getPathParameters,
@@ -31,14 +31,23 @@ export enum HttpMethods {
   DELETE = 'delete',
 }
 
-export const getOpenApiPathsObject = (
+export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
   appRouter: OpenApiRouter,
   securitySchemeNames: string[],
+  filter?: (ctx: {
+    metadata: {
+      openapi: NonNullable<OpenApiMeta['openapi']>;
+    } & TMeta;
+  }) => boolean,
 ): ZodOpenApiPathsObject => {
   const pathsObject: ZodOpenApiPathsObject = {};
   const procedures = Object.assign({}, appRouter._def.procedures);
 
-  forEachOpenApiProcedure(procedures, ({ path: procedurePath, type, procedure, openapi }) => {
+  forEachOpenApiProcedure<TMeta>(procedures, ({ path: procedurePath, type, procedure, meta }) => {
+    if (typeof filter === 'function' && !filter({ metadata: meta })) {
+      return;
+    }
+
     const procedureName = `${type}.${procedurePath}`;
 
     try {
@@ -49,6 +58,7 @@ export const getOpenApiPathsObject = (
         });
       }
 
+      const { openapi } = meta;
       const {
         method,
         summary,
@@ -59,7 +69,7 @@ export const getOpenApiPathsObject = (
         successDescription,
         errorResponses,
         protect = true,
-      } = openapi;
+      } = meta.openapi;
 
       const path = normalizePath(openapi.path);
       const pathParameters = getPathParameters(path);

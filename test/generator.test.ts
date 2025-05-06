@@ -3290,4 +3290,29 @@ describe('generator', () => {
       }
     `);
   });
+
+  test('with filter option', () => {
+    const appRouter = t.router({
+      publicProc: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/public' }, isPublic: true })
+        .input(z.object({}))
+        .output(z.object({ result: z.string() }))
+        .query(() => ({ result: 'public' })),
+      privateProc: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/private' }, isPublic: false })
+        .input(z.object({}))
+        .output(z.object({ result: z.string() }))
+        .query(() => ({ result: 'private' })),
+    });
+
+    // Only include procedures where isPublic is true
+    const openApiDocument = generateOpenApiDocument(appRouter, {
+      ...defaultDocOpts,
+      filter: ({ metadata }) => metadata.isPublic === true,
+    });
+
+    expect(Object.keys(openApiDocument.paths!)).toEqual(['/public']);
+    expect(openApiDocument.paths!['/public']).toBeDefined();
+    expect(openApiDocument.paths!['/private']).toBeUndefined();
+  });
 });

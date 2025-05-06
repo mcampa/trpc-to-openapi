@@ -14,22 +14,25 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     >
   >();
 
-  forEachOpenApiProcedure(router._def.procedures, ({ path: queryPath, procedure, openapi }) => {
-    if (procedure._def.type === 'subscription') {
-      return;
-    }
-    const { method } = openapi;
-    if (!procedureCache.has(method)) {
-      procedureCache.set(method, new Map());
-    }
-    const path = normalizePath(openapi.path);
-    const pathRegExp = getPathRegExp(path);
-    procedureCache.get(method)?.set(pathRegExp, {
-      type: procedure._def.type,
-      path: queryPath,
-      procedure,
-    });
-  });
+  forEachOpenApiProcedure(
+    router._def.procedures,
+    ({ path: queryPath, procedure, meta: { openapi } }) => {
+      if (procedure._def.type === 'subscription') {
+        return;
+      }
+      const { method } = openapi;
+      if (!procedureCache.has(method)) {
+        procedureCache.set(method, new Map());
+      }
+      const path = normalizePath(openapi.path);
+      const pathRegExp = getPathRegExp(path);
+      procedureCache.get(method)?.set(pathRegExp, {
+        type: procedure._def.type,
+        path: queryPath,
+        procedure,
+      });
+    },
+  );
 
   return (method: OpenApiMethod | 'HEAD', path: string) => {
     const procedureMethodCache = procedureCache.get(method);

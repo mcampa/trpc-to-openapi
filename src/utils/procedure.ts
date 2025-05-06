@@ -34,22 +34,31 @@ const getProcedureType = (procedure: OpenApiProcedure): TRPCProcedureType => {
   return procedure._def.type;
 };
 
-export const forEachOpenApiProcedure = (
+export const forEachOpenApiProcedure = <TMeta = Record<string, unknown>>(
   procedureRecord: OpenApiProcedureRecord,
   callback: (values: {
     path: string;
     type: TRPCProcedureType;
     procedure: OpenApiProcedure;
-    openapi: NonNullable<OpenApiMeta['openapi']>;
+    meta: {
+      openapi: NonNullable<OpenApiMeta['openapi']>;
+    } & TMeta;
   }) => void,
 ) => {
   for (const [path, procedure] of Object.entries(procedureRecord)) {
     // @ts-expect-error FIXME
     const meta = procedure._def.meta as unknown as OpenApiMeta;
-    const { openapi } = meta ?? {};
-    if (openapi && openapi.enabled !== false) {
+    if (meta.openapi && meta.openapi.enabled !== false) {
       const type = getProcedureType(procedure as OpenApiProcedure);
-      callback({ path, type, procedure: procedure as OpenApiProcedure, openapi });
+      callback({
+        path,
+        type,
+        procedure: procedure as OpenApiProcedure,
+        meta: {
+          openapi: meta.openapi,
+          ...(meta as TMeta),
+        },
+      });
     }
   }
 };
