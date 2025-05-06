@@ -1,5 +1,8 @@
 ## Changelog
 
+- v2.3.0
+  - feat(generator): add filter option to selectively include procedures in OpenAPI output
+
 - v2.2.0
   - Upgrade to tRPC 11.1.0
 

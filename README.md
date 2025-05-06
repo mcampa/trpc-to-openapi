@@ -348,6 +348,7 @@ Please see [full typings here](src/generator/index.ts).
 | `docsUrl`         | `string`                               | A URL to any external documentation.                    | `false`  |
 | `tags`            | `string[]`                             | A list for ordering endpoint groups.                    | `false`  |
 | `securitySchemes` | `Record<string, SecuritySchemeObject>` | Defaults to `Authorization` header with `Bearer` scheme | `false`  |
+| `filter` | `(ctx: { metadata: { openapi: NonNullable<OpenApiMeta['openapi']> } & TMeta }) => boolean` | Optional filter function to include/exclude procedures from the generated OpenAPI document. | `false`  |
 
 #### OpenApiMeta
 
@@ -388,3 +389,46 @@ _Still using tRPC v9? See our [`.interop()`](examples/with-interop) example._
 ## License
 
 Distributed under the MIT License. See LICENSE for more information.
+
+**Filtering Procedures in OpenAPI Output**
+
+You can use the `filter` option to selectively include or exclude procedures from the generated OpenAPI document. The filter function receives a context object with the procedure's metadata. Return `true` to include the procedure, or `false` to exclude it.
+
+**Example:**
+
+```typescript
+const appRouter = t.router({
+  publicProc: t.procedure
+    .meta({ openapi: { method: 'GET', path: '/public' }, isPublic: true })
+    .input(z.object({}))
+    .output(z.object({ result: z.string() }))
+    .query(() => ({ result: 'public' })),
+  privateProc: t.procedure
+    .meta({ openapi: { method: 'GET', path: '/private' }, isPublic: false })
+    .input(z.object({}))
+    .output(z.object({ result: z.string() }))
+    .query(() => ({ result: 'private' })),
+});
+
+// Only include procedures where isPublic is true
+const openApiDocument = generateOpenApiDocument(appRouter, {
+  ...defaultDocOpts,
+  filter: ({ metadata }) => metadata.isPublic === true,
+});
+
+// openApiDocument.paths will only include '/public'
+```
+
+You can also pass a metadata generic to `generateOpenApiDocument` to get proper types for your custom metadata in the filter function:
+
+```typescript
+// Define your custom metadata type
+interface MyMeta {
+  isPublic: boolean;
+}
+
+const openApiDocument = generateOpenApiDocument<MyMeta>(appRouter, {
+  ...defaultDocOpts,
+  filter: ({ metadata }) => metadata.isPublic === true,
+});
+```
