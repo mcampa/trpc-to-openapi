@@ -1,6 +1,6 @@
 {
   "name": "trpc-to-openapi",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "tRPC OpenAPI",
   "author": "mcampa",
   "private": false,

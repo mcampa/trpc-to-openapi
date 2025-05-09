@@ -1,5 +1,8 @@
 ## Changelog
 
+- v2.3.1
+  - fix: meta can be undefined
+
 - v2.3.0
   - feat(generator): add filter option to selectively include procedures in OpenAPI output
 
