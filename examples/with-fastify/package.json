@@ -7,9 +7,9 @@
   },
   "dependencies": {
     "@fastify/cors": "^8.2.1",
-    "@fastify/swagger": "^9.4.0",
+    "@fastify/swagger": "^8.5.1",
     "@trpc/server": "^11.1.0",
-    "fastify": "^5.1.0",
+    "fastify": "^4.17.0",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^11.0.3",
     "zod": "^3.21.4"

@@ -23,10 +23,14 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
 
   const openApiHttpHandler = createOpenApiNodeHttpHandler(opts);
 
-  fastify.all(`${prefix}/*`, async (request, reply) => {
-    const prefixRemovedFromUrl = request.url.replace(fastify.prefix, '').replace(prefix, '');
-    request.raw.url = prefixRemovedFromUrl;
-    return await openApiHttpHandler(request, reply.raw);
+  fastify.route({
+    method: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    url: `${prefix}/*`,
+    handler: async (request, reply) => {
+      const prefixRemovedFromUrl = request.url.replace(fastify.prefix, '').replace(prefix, '');
+      request.raw.url = prefixRemovedFromUrl;
+      return await openApiHttpHandler(request, reply.raw);
+    },
   });
 
   done();
