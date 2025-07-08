@@ -29,7 +29,16 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
     handler: async (request, reply) => {
       const prefixRemovedFromUrl = request.url.replace(fastify.prefix, '').replace(prefix, '');
       request.raw.url = prefixRemovedFromUrl;
-      return await openApiHttpHandler(request, reply.raw);
+
+      // assign the body already parsed by Fastify to raw request
+      // this way, raw request can be properly passed to openApiHttpHandler
+      // without breaking body parsing (because setEncoding will have already been called)
+      Object.assign(request.raw, { body: request.body });
+
+      // passing raw request (& reply) to openApiHttpHandler so they properly have
+      // their native Node.js properties kept (e.g: req.off). this is not the case if
+      // we pass the Fastify request directly
+      return await openApiHttpHandler(request.raw, reply.raw);
     },
   });
 
