@@ -1,8 +1,8 @@
 {
-  "name": "trpc-to-openapi",
-  "version": "2.3.2",
+  "name": "campaihq-trpc-to-openapi",
+  "version": "2.4.0",
   "description": "tRPC OpenAPI",
-  "author": "mcampa",
+  "author": "campaihq",
   "private": false,
   "license": "MIT",
   "keywords": [
@@ -10,9 +10,12 @@
     "openapi",
     "swagger"
   ],
-  "homepage": "https://github.com/mcampa/trpc-to-openapi",
-  "repository": "github:mcampa/trpc-to-openapi",
-  "bugs": "https://github.com/mcampa/trpc-to-openapi/issues",
+  "homepage": "https://github.com/campaihq/trpc-to-openapi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/campaihq/trpc-to-openapi.git"
+  },
+  "bugs": "https://github.com/campaihq/trpc-to-openapi/issues",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.mjs",
   "typings": "dist/cjs/index.d.ts",
