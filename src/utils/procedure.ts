@@ -1,9 +1,9 @@
 import { TRPCProcedureType } from '@trpc/server';
-import { AnyZodObject, z } from 'zod';
+import { ZodObject, z } from 'zod';
 
 import { OpenApiMeta, OpenApiProcedure, OpenApiProcedureRecord } from '../types';
 
-const mergeInputs = (inputParsers: AnyZodObject[]): AnyZodObject => {
+const mergeInputs = (inputParsers: ZodObject[]): ZodObject => {
   return inputParsers.reduce((acc, inputParser) => {
     return acc.merge(inputParser);
   }, z.object({}));
@@ -13,13 +13,13 @@ const mergeInputs = (inputParsers: AnyZodObject[]): AnyZodObject => {
 export const getInputOutputParsers = (
   procedure: OpenApiProcedure,
 ): {
-  inputParser: AnyZodObject | undefined;
-  outputParser: AnyZodObject | undefined;
+  inputParser: ZodObject | undefined;
+  outputParser: ZodObject | undefined;
 } => {
   // @ts-expect-error The types seems to be incorrect
-  const inputs = procedure._def.inputs as AnyZodObject[];
+  const inputs = procedure._def.inputs as ZodObject[];
   // @ts-expect-error The types seems to be incorrect
-  const output = procedure._def.output as AnyZodObject;
+  const output = procedure._def.output;
 
   return {
     inputParser: inputs.length >= 2 ? mergeInputs(inputs) : inputs[0],
@@ -50,6 +50,7 @@ export const forEachOpenApiProcedure = <TMeta = Record<string, unknown>>(
     const meta = procedure._def.meta as unknown as OpenApiMeta | undefined;
     if (meta?.openapi && meta.openapi.enabled !== false) {
       const type = getProcedureType(procedure as OpenApiProcedure);
+
       callback({
         path,
         type,

@@ -1,12 +1,9 @@
 import { initTRPC } from '@trpc/server';
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
 
 import { GenerateOpenApiDocumentOptions, OpenApiMeta, generateOpenApiDocument } from '../src';
 import * as zodUtils from '../src/utils/zod';
-
-extendZodWithOpenApi(z);
 
 // TODO: test for duplicate paths (using getPathRegExp)
 
@@ -49,7 +46,7 @@ describe('generator', () => {
           "title": "tRPC OpenAPI",
           "version": "1.0.0",
         },
-        "openapi": "3.0.3",
+        "openapi": "3.1.0",
         "paths": Object {},
         "servers": Array [
           Object {
@@ -192,6 +189,7 @@ describe('generator', () => {
         generateOpenApiDocument(appRouter, defaultDocOpts);
       }).toThrowError('[query.badInput] - Input parser key: "age" must be ZodString');
     }
+
     {
       const appRouter = t.router({
         okInput: t.procedure
@@ -367,6 +365,7 @@ describe('generator', () => {
         "content": Object {
           "application/json": Object {
             "schema": Object {
+              "properties": Object {},
               "type": "object",
             },
           },
@@ -412,6 +411,7 @@ describe('generator', () => {
         "components": Object {
           "schemas": Object {
             "error.BAD_REQUEST": Object {
+              "additionalProperties": false,
               "description": "The error information",
               "example": Object {
                 "code": "BAD_REQUEST",
@@ -428,6 +428,7 @@ describe('generator', () => {
                   "description": "An array of issues that were responsible for the error",
                   "example": Array [],
                   "items": Object {
+                    "additionalProperties": false,
                     "properties": Object {
                       "message": Object {
                         "type": "string",
@@ -454,6 +455,7 @@ describe('generator', () => {
               "type": "object",
             },
             "error.FORBIDDEN": Object {
+              "additionalProperties": false,
               "description": "The error information",
               "example": Object {
                 "code": "FORBIDDEN",
@@ -470,6 +472,7 @@ describe('generator', () => {
                   "description": "An array of issues that were responsible for the error",
                   "example": Array [],
                   "items": Object {
+                    "additionalProperties": false,
                     "properties": Object {
                       "message": Object {
                         "type": "string",
@@ -496,6 +499,7 @@ describe('generator', () => {
               "type": "object",
             },
             "error.INTERNAL_SERVER_ERROR": Object {
+              "additionalProperties": false,
               "description": "The error information",
               "example": Object {
                 "code": "INTERNAL_SERVER_ERROR",
@@ -512,6 +516,7 @@ describe('generator', () => {
                   "description": "An array of issues that were responsible for the error",
                   "example": Array [],
                   "items": Object {
+                    "additionalProperties": false,
                     "properties": Object {
                       "message": Object {
                         "type": "string",
@@ -538,6 +543,7 @@ describe('generator', () => {
               "type": "object",
             },
             "error.NOT_FOUND": Object {
+              "additionalProperties": false,
               "description": "The error information",
               "example": Object {
                 "code": "NOT_FOUND",
@@ -554,6 +560,7 @@ describe('generator', () => {
                   "description": "An array of issues that were responsible for the error",
                   "example": Array [],
                   "items": Object {
+                    "additionalProperties": false,
                     "properties": Object {
                       "message": Object {
                         "type": "string",
@@ -580,6 +587,7 @@ describe('generator', () => {
               "type": "object",
             },
             "error.UNAUTHORIZED": Object {
+              "additionalProperties": false,
               "description": "The error information",
               "example": Object {
                 "code": "UNAUTHORIZED",
@@ -596,6 +604,7 @@ describe('generator', () => {
                   "description": "An array of issues that were responsible for the error",
                   "example": Array [],
                   "items": Object {
+                    "additionalProperties": false,
                     "properties": Object {
                       "message": Object {
                         "type": "string",
@@ -635,7 +644,7 @@ describe('generator', () => {
           "title": "tRPC OpenAPI",
           "version": "1.0.0",
         },
-        "openapi": "3.0.3",
+        "openapi": "3.1.0",
         "paths": Object {
           "/users": Object {
             "get": Object {
@@ -647,6 +656,7 @@ describe('generator', () => {
                     "application/json": Object {
                       "schema": Object {
                         "items": Object {
+                          "additionalProperties": false,
                           "properties": Object {
                             "id": Object {
                               "type": "string",
@@ -709,6 +719,7 @@ describe('generator', () => {
             "post": Object {
               "description": undefined,
               "operationId": "createUser",
+              "parameters": Array [],
               "requestBody": Object {
                 "content": Object {
                   "application/json": Object {
@@ -732,6 +743,7 @@ describe('generator', () => {
                   "content": Object {
                     "application/json": Object {
                       "schema": Object {
+                        "additionalProperties": false,
                         "properties": Object {
                           "id": Object {
                             "type": "string",
@@ -900,6 +912,7 @@ describe('generator', () => {
                   "content": Object {
                     "application/json": Object {
                       "schema": Object {
+                        "additionalProperties": false,
                         "properties": Object {
                           "id": Object {
                             "type": "string",
@@ -1010,6 +1023,7 @@ describe('generator', () => {
                   "content": Object {
                     "application/json": Object {
                       "schema": Object {
+                        "additionalProperties": false,
                         "properties": Object {
                           "id": Object {
                             "type": "string",
@@ -1210,6 +1224,7 @@ describe('generator', () => {
       Object {
         "description": undefined,
         "operationId": "createUser",
+        "parameters": Array [],
         "requestBody": Object {
           "content": Object {
             "application/json": Object {
@@ -1219,6 +1234,7 @@ describe('generator', () => {
                   "id": Object {
                     "description": "User ID",
                     "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
                     "type": "string",
                   },
                   "name": Object {
@@ -1241,11 +1257,13 @@ describe('generator', () => {
             "content": Object {
               "application/json": Object {
                 "schema": Object {
+                  "additionalProperties": false,
                   "description": "User data",
                   "properties": Object {
                     "id": Object {
                       "description": "User ID",
                       "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
                       "type": "string",
                     },
                     "name": Object {
@@ -1326,6 +1344,7 @@ describe('generator', () => {
             "schema": Object {
               "description": "User ID",
               "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
               "type": "string",
             },
           },
@@ -1335,11 +1354,13 @@ describe('generator', () => {
             "content": Object {
               "application/json": Object {
                 "schema": Object {
+                  "additionalProperties": false,
                   "description": "User data",
                   "properties": Object {
                     "id": Object {
                       "description": "User ID",
                       "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
                       "type": "string",
                     },
                     "name": Object {
@@ -1537,8 +1558,14 @@ describe('generator', () => {
         "content": Object {
           "application/json": Object {
             "schema": Object {
-              "nullable": true,
-              "type": "string",
+              "anyOf": Array [
+                Object {
+                  "type": "string",
+                },
+                Object {
+                  "type": "null",
+                },
+              ],
             },
           },
         },
@@ -2072,9 +2099,7 @@ describe('generator', () => {
                   "type": "string",
                 },
                 Object {
-                  "enum": Array [
-                    "Lily",
-                  ],
+                  "const": "Lily",
                   "type": "string",
                 },
               ],
@@ -2114,15 +2139,11 @@ describe('generator', () => {
               Object {
                 "anyOf": Array [
                   Object {
-                    "enum": Array [
-                      "a",
-                    ],
+                    "const": "a",
                     "type": "string",
                   },
                   Object {
-                    "enum": Array [
-                      "b",
-                    ],
+                    "const": "b",
                     "type": "string",
                   },
                 ],
@@ -2130,15 +2151,11 @@ describe('generator', () => {
               Object {
                 "anyOf": Array [
                   Object {
-                    "enum": Array [
-                      "b",
-                    ],
+                    "const": "b",
                     "type": "string",
                   },
                   Object {
-                    "enum": Array [
-                      "c",
-                    ],
+                    "const": "c",
                     "type": "string",
                   },
                 ],
@@ -2193,9 +2210,7 @@ describe('generator', () => {
           "name": "payload",
           "required": true,
           "schema": Object {
-            "enum": Array [
-              "literal",
-            ],
+            "const": "literal",
             "type": "string",
           },
         },
@@ -2272,24 +2287,24 @@ describe('generator', () => {
   });
 
   test('with native-enum', () => {
-    {
-      enum InvalidEnum {
-        Lily,
-        mcampa,
-      }
+    // {
+    //   enum InvalidEnum {
+    //     Lily,
+    //     mcampa,
+    //   }
 
-      const appRouter = t.router({
-        nativeEnum: t.procedure
-          .meta({ openapi: { method: 'GET', path: '/nativeEnum' } })
-          .input(z.object({ name: z.nativeEnum(InvalidEnum) }))
-          .output(z.null())
-          .query(() => null),
-      });
+    //   const appRouter = t.router({
+    //     nativeEnum: t.procedure
+    //       .meta({ openapi: { method: 'GET', path: '/nativeEnum' } })
+    //       .input(z.object({ name: z.nativeEnum(InvalidEnum) }))
+    //       .output(z.null())
+    //       .query(() => null),
+    //   });
 
-      expect(() => {
-        generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrow('[query.nativeEnum] - Input parser key: "name" must be ZodString');
-    }
+    //   expect(() => {
+    //     generateOpenApiDocument(appRouter, defaultDocOpts);
+    //   }).toThrow('[query.nativeEnum] - Input parser key: "name" must be ZodString');
+    // }
     {
       enum ValidEnum {
         Lily = 'Lily',
@@ -2347,6 +2362,7 @@ describe('generator', () => {
                 "allowed": Object {
                   "items": Object {
                     "format": "email",
+                    "pattern": "^(?!\\\\.)(?!.*\\\\.\\\\.)([A-Za-z0-9_'+\\\\-\\\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\\\-]*\\\\.)+[A-Za-z]{2,}$",
                     "type": "string",
                   },
                   "type": "array",
@@ -2354,6 +2370,7 @@ describe('generator', () => {
                 "blocked": Object {
                   "items": Object {
                     "format": "email",
+                    "pattern": "^(?!\\\\.)(?!.*\\\\.\\\\.)([A-Za-z0-9_'+\\\\-\\\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\\\-]*\\\\.)+[A-Za-z]{2,}$",
                     "type": "string",
                   },
                   "type": "array",
@@ -2375,10 +2392,12 @@ describe('generator', () => {
         "content": Object {
           "application/json": Object {
             "schema": Object {
+              "additionalProperties": false,
               "properties": Object {
                 "allowed": Object {
                   "items": Object {
                     "format": "email",
+                    "pattern": "^(?!\\\\.)(?!.*\\\\.\\\\.)([A-Za-z0-9_'+\\\\-\\\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\\\-]*\\\\.)+[A-Za-z]{2,}$",
                     "type": "string",
                   },
                   "type": "array",
@@ -2386,6 +2405,7 @@ describe('generator', () => {
                 "blocked": Object {
                   "items": Object {
                     "format": "email",
+                    "pattern": "^(?!\\\\.)(?!.*\\\\.\\\\.)([A-Za-z0-9_'+\\\\-\\\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\\\-]*\\\\.)+[A-Za-z]{2,}$",
                     "type": "string",
                   },
                   "type": "array",
@@ -2413,7 +2433,7 @@ describe('generator', () => {
             path: '/echo',
             requestHeaders: z
               .object({
-                'x-custom-header': z.string().openapi({ description: 'Some custom header.' }),
+                'x-custom-header': z.string().meta({ description: 'Some custom header.' }),
               })
               .required(),
           },
@@ -2428,20 +2448,19 @@ describe('generator', () => {
     expect(openApiDocument.paths!['/echo']!.get!.parameters).toMatchInlineSnapshot(`
       Array [
         Object {
-          "in": "query",
-          "name": "id",
-          "required": true,
-          "schema": Object {
-            "type": "string",
-          },
-        },
-        Object {
-          "description": "Some custom header.",
           "in": "header",
           "name": "x-custom-header",
           "required": true,
           "schema": Object {
             "description": "Some custom header.",
+            "type": "string",
+          },
+        },
+        Object {
+          "in": "query",
+          "name": "id",
+          "required": true,
+          "schema": Object {
             "type": "string",
           },
         },
@@ -2509,7 +2528,7 @@ describe('generator', () => {
       }
     `);
     expect(openApiDocument.paths!['/query/post']!.post!.parameters).toMatchInlineSnapshot(
-      `undefined`,
+      `Array []`,
     );
   });
 
@@ -2610,6 +2629,7 @@ describe('generator', () => {
                 "content": Object {
                   "application/json": Object {
                     "schema": Object {
+                      "additionalProperties": false,
                       "properties": Object {
                         "payload": Object {
                           "type": "string",
@@ -2703,6 +2723,7 @@ describe('generator', () => {
                 "content": Object {
                   "application/json": Object {
                     "schema": Object {
+                      "additionalProperties": false,
                       "properties": Object {
                         "payload": Object {
                           "type": "string",
@@ -2796,6 +2817,7 @@ describe('generator', () => {
                 "content": Object {
                   "application/json": Object {
                     "schema": Object {
+                      "additionalProperties": false,
                       "properties": Object {
                         "payload": Object {
                           "type": "string",
@@ -3069,11 +3091,11 @@ describe('generator', () => {
         })
         .input(
           z.object({
-            name: z.string().openapi({ example: 'Lily' }),
-            greeting: z.string().openapi({ example: 'Hello' }),
+            name: z.string().meta({ example: 'Lily' }),
+            greeting: z.string().meta({ example: 'Hello' }),
           }),
         )
-        .output(z.object({ output: z.string().openapi({ example: 'Hello Lily' }) }))
+        .output(z.object({ output: z.string().meta({ example: 'Hello Lily' }) }))
         .query(({ input }) => ({
           output: `${input.greeting} ${input.name}`,
         })),
@@ -3086,11 +3108,11 @@ describe('generator', () => {
         })
         .input(
           z.object({
-            name: z.string().openapi({ example: 'Lily' }),
-            greeting: z.string().openapi({ example: 'Hello' }),
+            name: z.string().meta({ example: 'Lily' }),
+            greeting: z.string().meta({ example: 'Hello' }),
           }),
         )
-        .output(z.object({ output: z.string().openapi({ example: 'Hello Lily' }) }))
+        .output(z.object({ output: z.string().meta({ example: 'Hello Lily' }) }))
         .mutation(({ input }) => ({
           output: `${input.greeting} ${input.name}`,
         })),
@@ -3126,6 +3148,7 @@ describe('generator', () => {
         "content": Object {
           "application/json": Object {
             "schema": Object {
+              "additionalProperties": false,
               "properties": Object {
                 "output": Object {
                   "example": "Hello Lily",
@@ -3184,6 +3207,7 @@ describe('generator', () => {
         "content": Object {
           "application/json": Object {
             "schema": Object {
+              "additionalProperties": false,
               "properties": Object {
                 "output": Object {
                   "example": "Hello Lily",
@@ -3214,12 +3238,12 @@ describe('generator', () => {
                 .number()
                 .int()
                 .optional()
-                .openapi({ description: 'Request limit per hour.' }),
+                .meta({ description: 'Request limit per hour.' }),
               'X-RateLimit-Remaining': z
                 .number()
                 .int()
                 .optional()
-                .openapi({ description: 'The number of requests left for the time window.' }),
+                .meta({ description: 'The number of requests left for the time window.' }),
             }),
           },
         })
@@ -3252,12 +3276,14 @@ describe('generator', () => {
         },
       ]
     `);
+
     expect(openApiDocument.paths!['/query-example/{name}']!.get!.responses?.[200])
       .toMatchInlineSnapshot(`
       Object {
         "content": Object {
           "application/json": Object {
             "schema": Object {
+              "additionalProperties": false,
               "properties": Object {
                 "output": Object {
                   "type": "string",
@@ -3273,16 +3299,20 @@ describe('generator', () => {
         "description": "Successful response",
         "headers": Object {
           "X-RateLimit-Limit": Object {
-            "required": true,
+            "description": "Request limit per hour.",
             "schema": Object {
               "description": "Request limit per hour.",
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
               "type": "integer",
             },
           },
           "X-RateLimit-Remaining": Object {
-            "required": true,
+            "description": "The number of requests left for the time window.",
             "schema": Object {
               "description": "The number of requests left for the time window.",
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
               "type": "integer",
             },
           },

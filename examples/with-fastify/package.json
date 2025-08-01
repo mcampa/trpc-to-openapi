@@ -12,7 +12,7 @@
     "fastify": "^4.17.0",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^11.0.3",
-    "zod": "^3.21.4"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",
@@ -22,6 +22,6 @@
     "@types/uuid": "^9.0.1",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "5.7.2"
+    "typescript": "^5.8.3"
   }
 }

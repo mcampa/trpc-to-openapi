@@ -166,9 +166,8 @@ describe('standalone adapter', () => {
           {
             code: 'invalid_type',
             expected: 'string',
-            message: 'Required',
+            message: 'Invalid input: expected string, received undefined',
             path: ['payload'],
-            received: 'undefined',
           },
         ],
       }),
@@ -235,9 +234,8 @@ describe('standalone adapter', () => {
           {
             code: 'invalid_type',
             expected: 'string',
-            message: 'Required',
+            message: 'Invalid input: expected string, received undefined',
             path: ['payload'],
-            received: 'undefined',
           },
         ],
       }),
@@ -276,9 +274,8 @@ describe('standalone adapter', () => {
           {
             code: 'invalid_type',
             expected: 'string',
-            message: 'Expected string, received number',
+            message: 'Invalid input: expected string, received number',
             path: ['payload'],
-            received: 'number',
           },
         ],
       }),
@@ -662,9 +659,8 @@ describe('standalone adapter', () => {
             {
               code: 'invalid_type',
               expected: 'string',
-              message: 'Expected string, received array',
+              message: 'Invalid input: expected string, received array',
               path: ['name'],
-              received: 'array',
             },
           ],
         }),
@@ -884,11 +880,10 @@ describe('standalone adapter', () => {
       }).rejects.toThrowErrorMatchingInlineSnapshot(`
       "[
         {
-          \\"code\\": \\"invalid_type\\",
           \\"expected\\": \\"void\\",
-          \\"received\\": \\"object\\",
+          \\"code\\": \\"invalid_type\\",
           \\"path\\": [],
-          \\"message\\": \\"Expected void, received object\\"
+          \\"message\\": \\"Invalid input: expected void, received object\\"
         }
       ]"
       `);
@@ -914,11 +909,10 @@ describe('standalone adapter', () => {
       }).rejects.toThrowErrorMatchingInlineSnapshot(`
         "[
           {
-            \\"code\\": \\"invalid_type\\",
             \\"expected\\": \\"void\\",
-            \\"received\\": \\"object\\",
+            \\"code\\": \\"invalid_type\\",
             \\"path\\": [],
-            \\"message\\": \\"Expected void, received object\\"
+            \\"message\\": \\"Invalid input: expected void, received Object\\"
           }
         ]"
       `);

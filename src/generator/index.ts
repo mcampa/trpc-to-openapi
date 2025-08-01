@@ -40,8 +40,9 @@ export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
       scheme: 'bearer',
     },
   };
+
   return createDocument({
-    openapi: opts.openApiVersion ?? '3.0.3',
+    openapi: opts.openApiVersion ?? '3.1.0',
     info: {
       title: opts.title,
       description: opts.description,

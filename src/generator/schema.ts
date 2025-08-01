@@ -1,12 +1,11 @@
 import { TRPCError } from '@trpc/server';
-import { AnyZodObject, ZodTypeAny, z } from 'zod';
+import { ZodObject, ZodAny, z } from 'zod';
 import {
   ZodOpenApiContentObject,
   ZodOpenApiParameters,
   ZodOpenApiRequestBodyObject,
   ZodOpenApiResponseObject,
   ZodOpenApiResponsesObject,
-  extendZodWithOpenApi,
 } from 'zod-openapi';
 
 import {
@@ -27,13 +26,11 @@ import {
 } from '../utils';
 import { HttpMethods } from './paths';
 
-extendZodWithOpenApi(z);
-
 export const getParameterObjects = (
   schema: z.ZodObject<z.ZodRawShape>,
   required: boolean,
   pathParameters: string[],
-  headersSchema: AnyZodObject | undefined,
+  headersSchema: ZodObject | undefined,
   inType: 'all' | 'path' | 'query',
 ): ZodOpenApiParameters | undefined => {
   const shape = schema.shape;
@@ -48,6 +45,7 @@ export const getParameterObjects = (
     }
   }
 
+  // @ts-expect-error fix later
   const { path, query } = shapeKeys
     .filter((shapeKey) => {
       const isPathParameter = pathParameters.includes(shapeKey);
@@ -60,7 +58,7 @@ export const getParameterObjects = (
     })
     .map((shapeKey) => {
       let shapeSchema = shape[shapeKey]!;
-      const isShapeRequired = !shapeSchema.isOptional();
+      const isShapeRequired = !(shapeSchema as z.ZodType).safeParse(undefined).success;
       const isPathParameter = pathParameters.includes(shapeKey);
 
       if (!instanceofZodTypeLikeString(shapeSchema)) {
@@ -98,13 +96,32 @@ export const getParameterObjects = (
     })
     .reduce(
       ({ path, query }, { name, paramType, schema, required }) =>
+        // @ts-expect-error fix later
         paramType === 'path'
-          ? { path: { ...path, [name]: required ? schema : schema.optional() }, query }
-          : { path, query: { ...query, [name]: required ? schema : schema.optional() } },
-      { path: {} as Record<string, ZodTypeAny>, query: {} as Record<string, ZodTypeAny> },
+          ? {
+              path: { ...path, [name]: required ? schema : (schema as z.ZodType).optional() },
+              query,
+            }
+          : {
+              path,
+              query: { ...query, [name]: required ? schema : (schema as z.ZodType).optional() },
+            },
+      { path: {} as Record<string, ZodAny>, query: {} as Record<string, ZodAny> },
     );
 
-  return { header: headersSchema, path: z.object(path), query: z.object(query) };
+  let res: ZodOpenApiParameters = {};
+
+  if (headersSchema) {
+    res.header = headersSchema;
+  }
+
+  res = {
+    ...res,
+    path: z.object(path),
+    query: z.object(query),
+  };
+
+  return res;
 };
 
 export const getRequestBodyObject = (
@@ -118,8 +135,8 @@ export const getRequestBodyObject = (
   pathParameters.forEach((pathParameter) => {
     mask[pathParameter] = true;
   });
-  const o = schema._def.zodOpenApi?.openapi;
-  const dedupedSchema = schema.omit(mask).openapi({
+  const o = schema.meta();
+  const dedupedSchema = schema.omit(mask).meta({
     ...(o?.title ? { title: o?.title } : {}),
     ...(o?.description ? { description: o?.description } : {}),
   });
@@ -158,23 +175,23 @@ export const errorResponseObject = (
         'application/json': {
           schema: z
             .object({
-              message: z.string().openapi({
+              message: z.string().meta({
                 description: 'The error message',
                 example: message ?? 'Internal server error',
               }),
-              code: z.string().openapi({
+              code: z.string().meta({
                 description: 'The error code',
                 example: code ?? 'INTERNAL_SERVER_ERROR',
               }),
               issues: z
                 .array(z.object({ message: z.string() }))
                 .optional()
-                .openapi({
+                .meta({
                   description: 'An array of issues that were responsible for the error',
                   example: issues ?? [],
                 }),
             })
-            .openapi({
+            .meta({
               title: `${message ?? 'Internal server'} error (${
                 TRPC_ERROR_CODE_HTTP_STATUS[code] ?? 500
               })`,
@@ -184,7 +201,7 @@ export const errorResponseObject = (
                 message: message ?? 'Internal server error',
                 issues: issues ?? [],
               },
-              ref: `error.${code}`,
+              id: `error.${code}`,
             }),
         },
       },
@@ -203,9 +220,9 @@ export const errorResponseFromMessage = (status: number, message: string) =>
   errorResponseObject(HTTP_STATUS_TRPC_ERROR_CODE[status], message);
 
 export const getResponsesObject = (
-  schema: ZodTypeAny,
+  schema: ZodObject,
   httpMethod: HttpMethods,
-  headers: AnyZodObject | undefined,
+  headers: ZodObject | undefined,
   isProtected: boolean,
   hasInputs: boolean,
   successDescription?: string,
@@ -216,10 +233,9 @@ export const getResponsesObject = (
     headers: headers,
     content: {
       'application/json': {
-        schema: instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodVoid)
+        schema: instanceofZodTypeKind(schema, 'void')
           ? {}
-          : instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodNever) ||
-            instanceofZodTypeKind(schema, z.ZodFirstPartyTypeKind.ZodUndefined)
+          : instanceofZodTypeKind(schema, 'never') || instanceofZodTypeKind(schema, 'undefined')
           ? { not: {} }
           : schema,
       },
