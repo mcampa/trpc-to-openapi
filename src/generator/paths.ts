@@ -4,7 +4,6 @@ import {
   ZodOpenApiParameters,
   ZodOpenApiPathsObject,
   ZodOpenApiRequestBodyObject,
-  extendZodWithOpenApi,
 } from 'zod-openapi';
 
 import { OpenApiMeta, OpenApiRouter } from '../types';
@@ -20,8 +19,6 @@ import {
   unwrapZodType,
 } from '../utils';
 import { getParameterObjects, getRequestBodyObject, getResponsesObject, hasInputs } from './schema';
-
-extendZodWithOpenApi(z);
 
 export enum HttpMethods {
   GET = 'get',
@@ -111,9 +108,11 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
           code: 'INTERNAL_SERVER_ERROR',
         });
       }
-      const isInputRequired = !inputParser.isOptional();
-      const o = inputParser?._def.zodOpenApi?.openapi;
-      const inputSchema = unwrapZodType(inputParser, true).openapi({
+      const isInputRequired = !inputParser.safeParse(undefined).success;
+
+      const o = inputParser.meta();
+
+      const inputSchema = unwrapZodType(inputParser, true).meta({
         ...(o?.title ? { title: o?.title } : {}),
         ...(o?.description ? { description: o?.description } : {}),
       });

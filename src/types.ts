@@ -7,7 +7,8 @@ import type {
   RouterRecord,
 } from '@trpc/server/unstable-core-do-not-import';
 import { IncomingMessage } from 'http';
-import type { AnyZodObject, ZodIssue } from 'zod';
+import type { ZodObject } from 'zod';
+import type { $ZodIssue } from 'zod/v4/core';
 
 export { type OpenAPIObject, type SecuritySchemeObject } from 'openapi3-ts/oas31';
 
@@ -32,8 +33,8 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
     tags?: string[];
     contentTypes?: OpenApiContentType[];
     deprecated?: boolean;
-    requestHeaders?: AnyZodObject;
-    responseHeaders?: AnyZodObject;
+    requestHeaders?: ZodObject;
+    responseHeaders?: ZodObject;
     successDescription?: string;
     errorResponses?: number[] | Record<number, string>;
   };
@@ -42,8 +43,8 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
 export type OpenApiProcedure = Procedure<
   ProcedureType,
   {
-    input: any; // AnyZodObject[] | Parser[] | undefined;
-    output: any; // Parser | undefined;
+    input: any;
+    output: any;
   }
 >;
 
@@ -64,7 +65,7 @@ export type OpenApiSuccessResponse<D = any> = D;
 export interface OpenApiErrorResponse {
   message: string;
   code: TRPC_ERROR_CODE_KEY;
-  issues?: ZodIssue[];
+  issues?: $ZodIssue[];
 }
 
 export type OpenApiResponse<D = any> = OpenApiSuccessResponse<D> | OpenApiErrorResponse;
