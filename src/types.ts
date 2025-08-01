@@ -43,8 +43,8 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
 export type OpenApiProcedure = Procedure<
   ProcedureType,
   {
-    input: any; // ZodObject[] | Parser[] | undefined;
-    output: any; // Parser | undefined;
+    input: any;
+    output: any;
   }
 >;
 

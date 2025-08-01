@@ -110,7 +110,6 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
       }
       const isInputRequired = !inputParser.safeParse(undefined).success;
 
-      // const o = inputParser?._def.zodOpenApi?.openapi;
       const o = inputParser.meta();
 
       const inputSchema = unwrapZodType(inputParser, true).meta({
