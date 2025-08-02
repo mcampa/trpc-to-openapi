@@ -57,7 +57,7 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
           void reply.code(value);
         },
         get() {
-          return reply.statusCode;
+          return reply.raw.statusCode;
         },
         enumerable: true,
         configurable: true,
@@ -70,7 +70,9 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
 
       // Add end method
       replyWithNodeMethods.end = (data: string) => {
-        void reply.send(data);
+        if (!reply.sent) {
+          void reply.send(data);
+        }
       };
 
       // Add properties and methods needed by incomingMessageToRequest
