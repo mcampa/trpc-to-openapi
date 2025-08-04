@@ -1,5 +1,8 @@
 ## Changelog
 
+- v3.0.0
+  - Zod v4 and zod-openapi v5. Thanks to [edcaron](https://github.com/edcaron) for the change in https://github.com/mcampa/trpc-to-openapi/pull/98
+
 - v2.4.0
   - fix: replace `reply.raw` with reply for fastify adapter https://github.com/mcampa/trpc-to-openapi/pull/99
 
