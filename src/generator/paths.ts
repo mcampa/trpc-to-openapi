@@ -58,6 +58,7 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
       const { openapi } = meta;
       const {
         method,
+        operationId,
         summary,
         description,
         tags,
@@ -171,7 +172,7 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
       pathsObject[path] = {
         ...pathsObject[path],
         [httpMethod]: {
-          operationId: procedurePath.replace(/\./g, '-'),
+          operationId: operationId ?? procedurePath.replace(/\./g, '-'),
           summary,
           description,
           tags,

@@ -3345,4 +3345,24 @@ describe('generator', () => {
     expect(openApiDocument.paths!['/public']).toBeDefined();
     expect(openApiDocument.paths!['/private']).toBeUndefined();
   });
+
+  test('with custom operationId', () => {
+    const appRouter = t.router({
+      getMe: t.procedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/metadata/all',
+            operationId: 'getAllMetadataAboutMe',
+          },
+        })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(({ input }) => ({ name: input.name })),
+    });
+
+    const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+
+    expect(openApiDocument.paths!['/metadata/all']!.get!.operationId).toBe('getAllMetadataAboutMe');
+  });
 });
