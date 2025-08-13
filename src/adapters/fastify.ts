@@ -1,10 +1,17 @@
 import { AnyRouter } from '@trpc/server';
-import { FastifyInstance, FastifyReply } from 'fastify';
-import type { ServerResponse } from 'http';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { IncomingMessage, ServerResponse } from 'http';
 import type { Socket } from 'net';
 
 import { OpenApiRouter } from '../types';
 import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
+
+interface FastifyRequestWithNodeMethods extends FastifyRequest {
+  once: IncomingMessage['once'];
+  on: IncomingMessage['on'];
+  off: IncomingMessage['off'];
+  destroy: IncomingMessage['destroy'];
+}
 
 // Type for Fastify reply with Node.js response methods added
 interface FastifyReplyWithNodeMethods extends FastifyReply {
@@ -48,6 +55,15 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
       const prefixRemovedFromUrl = request.url.replace(fastify.prefix, '').replace(prefix, '');
       request.raw.url = prefixRemovedFromUrl;
 
+      // Add Node.js request methods to Fastify request
+      const requestWithNodeMethods = request as FastifyRequestWithNodeMethods;
+
+      // Add event emitter methods
+      requestWithNodeMethods.once = request.raw.once.bind(request.raw);
+      requestWithNodeMethods.on = request.raw.on.bind(request.raw);
+      requestWithNodeMethods.off = request.raw.off.bind(request.raw);
+      requestWithNodeMethods.destroy = request.raw.destroy.bind(request.raw);
+
       // Add Node.js response methods to Fastify reply
       const replyWithNodeMethods = reply as FastifyReplyWithNodeMethods;
 
@@ -57,7 +73,7 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
           void reply.code(value);
         },
         get() {
-          return reply.statusCode;
+          return reply.raw.statusCode;
         },
         enumerable: true,
         configurable: true,
@@ -70,7 +86,9 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
 
       // Add end method
       replyWithNodeMethods.end = (data: string) => {
-        void reply.send(data);
+        if (!reply.sent) {
+          void reply.send(data);
+        }
       };
 
       // Add properties and methods needed by incomingMessageToRequest
@@ -86,7 +104,7 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
       replyWithNodeMethods.emit = reply.raw.emit.bind(reply.raw);
       replyWithNodeMethods.removeListener = reply.raw.removeListener.bind(reply.raw);
 
-      return await openApiHttpHandler(request, replyWithNodeMethods);
+      return await openApiHttpHandler(requestWithNodeMethods, replyWithNodeMethods);
     },
   });
 
