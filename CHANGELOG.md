@@ -1,5 +1,8 @@
 ## Changelog
 
+- v3.0.1
+  - fix: bug in replace reply.raw with reply https://github.com/mcampa/trpc-to-openapi/pull/104/files
+
 - v3.0.0
   - Zod v4 and zod-openapi v5. Thanks to [edcaron](https://github.com/edcaron) for the change in https://github.com/mcampa/trpc-to-openapi/pull/98
 
