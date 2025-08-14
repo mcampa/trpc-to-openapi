@@ -1,51 +1,87 @@
-import { OpenApiMethod, OpenApiProcedure, OpenApiRouter } from '../../types';
-import { getPathRegExp, normalizePath, forEachOpenApiProcedure } from '../../utils';
+import type { OpenApiMethod, OpenApiProcedure, OpenApiRouter } from "../../types";
+import { forEachOpenApiProcedure, getPathRegExp, normalizePath } from "../../utils";
 
 export const createProcedureCache = (router: OpenApiRouter) => {
-  const procedureCache = new Map<
-    OpenApiMethod | 'HEAD',
+  // Cache for exact paths (non-parameterized)
+  const exactPathCache = new Map<
+    OpenApiMethod | "HEAD",
     Map<
-      RegExp,
+      string,
       {
-        type: 'query' | 'mutation';
+        type: "query" | "mutation";
         path: string;
         procedure: OpenApiProcedure;
       }
     >
   >();
 
-  forEachOpenApiProcedure(
-    router._def.procedures,
-    ({ path: queryPath, procedure, meta: { openapi } }) => {
-      if (procedure._def.type === 'subscription') {
-        return;
+  // Cache for parameterized paths (with regex patterns)
+  const parameterizedPathCache = new Map<
+    OpenApiMethod | "HEAD",
+    Map<
+      RegExp,
+      {
+        type: "query" | "mutation";
+        path: string;
+        procedure: OpenApiProcedure;
       }
-      const { method } = openapi;
-      if (!procedureCache.has(method)) {
-        procedureCache.set(method, new Map());
+    >
+  >();
+
+  forEachOpenApiProcedure(router._def.procedures, ({ path: queryPath, procedure, meta: { openapi } }) => {
+    if (procedure._def.type === "subscription") {
+      return;
+    }
+    const { method } = openapi;
+    const normalizedPath = normalizePath(openapi.path);
+
+    // Check if the path contains parameters (curly braces)
+    const hasParameters = /\{.+?\}/.test(normalizedPath);
+
+    if (hasParameters) {
+      // Parameterized path - use regex cache
+      if (!parameterizedPathCache.has(method)) {
+        parameterizedPathCache.set(method, new Map());
       }
-      const path = normalizePath(openapi.path);
-      const pathRegExp = getPathRegExp(path);
-      procedureCache.get(method)?.set(pathRegExp, {
+      const pathRegExp = getPathRegExp(normalizedPath);
+      parameterizedPathCache.get(method)?.set(pathRegExp, {
         type: procedure._def.type,
         path: queryPath,
         procedure,
       });
-    },
-  );
+    } else {
+      // Exact path - use string cache
+      if (!exactPathCache.has(method)) {
+        exactPathCache.set(method, new Map());
+      }
+      exactPathCache.get(method)?.set(normalizedPath, {
+        type: procedure._def.type,
+        path: queryPath,
+        procedure,
+      });
+    }
+  });
 
-  return (method: OpenApiMethod | 'HEAD', path: string) => {
-    const procedureMethodCache = procedureCache.get(method);
-    if (!procedureMethodCache) {
+  return (method: OpenApiMethod | "HEAD", path: string) => {
+    // First, try to find an exact match
+    const exactMethodCache = exactPathCache.get(method);
+    if (exactMethodCache?.has(path)) {
+      const procedure = exactMethodCache.get(path);
+      return { procedure, pathInput: {} };
+    }
+
+    // If no exact match, try parameterized paths
+    const parameterizedMethodCache = parameterizedPathCache.get(method);
+    if (!parameterizedMethodCache) {
       return undefined;
     }
 
-    const procedureRegExp = Array.from(procedureMethodCache.keys()).find((re) => re.test(path));
+    const procedureRegExp = Array.from(parameterizedMethodCache.keys()).find((re) => re.test(path));
     if (!procedureRegExp) {
       return undefined;
     }
 
-    const procedure = procedureMethodCache.get(procedureRegExp);
+    const procedure = parameterizedMethodCache.get(procedureRegExp);
     const pathInput = procedureRegExp.exec(path)?.groups ?? {};
 
     return { procedure, pathInput };
