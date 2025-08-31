@@ -23,6 +23,7 @@ import {
   coerceSchema,
   instanceofZodTypeLikeVoid,
   instanceofZodTypeObject,
+  instanceofZodTypeOptional,
   unwrapZodType,
   zodSupportsCoerce,
   getContentType,
@@ -128,7 +129,21 @@ export const createOpenApiNodeHttpHandler = <
       if (zodSupportsCoerce && instanceofZodTypeObject(unwrappedSchema)) {
         if (!useBody) {
           for (const [key, shape] of Object.entries(unwrappedSchema.shape)) {
-            if (shape instanceof ZodArray && !Array.isArray(input[key])) {
+            let isArray = false;
+            
+            // Check if it's a direct array
+            if (shape instanceof ZodArray) {
+              isArray = true;
+            }
+            // Check if it's an optional array
+            else if (instanceofZodTypeOptional(shape)) {
+              const innerType = (shape as any).unwrap();
+              if (innerType instanceof ZodArray) {
+                isArray = true;
+              }
+            }
+            
+            if (isArray && input[key] !== undefined && !Array.isArray(input[key])) {
               input[key] = [input[key]];
             }
           }
