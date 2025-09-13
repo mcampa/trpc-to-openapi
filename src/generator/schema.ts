@@ -139,8 +139,8 @@ export const getRequestBodyObject = (
   const dedupedSchema = schema.omit(mask).meta({
     ...(o?.title ? { title: o?.title } : {}),
     ...(o?.description ? { description: o?.description } : {}),
+    ...(o?.examples ? { examples: o?.examples } : {}),
   });
-
   // if all keys are path parameters
   if (pathParameters.length > 0 && Object.keys(dedupedSchema.shape).length === 0) {
     return undefined;
@@ -236,8 +236,8 @@ export const getResponsesObject = (
         schema: instanceofZodTypeKind(schema, 'void')
           ? {}
           : instanceofZodTypeKind(schema, 'never') || instanceofZodTypeKind(schema, 'undefined')
-          ? { not: {} }
-          : schema,
+            ? { not: {} }
+            : schema,
       },
     },
   },
