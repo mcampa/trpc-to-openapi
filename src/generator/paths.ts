@@ -96,7 +96,7 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
 
       const { inputParser, outputParser } = getInputOutputParsers(procedure);
 
-      if (!instanceofZodType(inputParser)) {
+      if (inputParser && !instanceofZodType(inputParser)) {
         throw new TRPCError({
           message: 'Input parser expects a Zod validator',
           code: 'INTERNAL_SERVER_ERROR',
@@ -108,20 +108,29 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
           code: 'INTERNAL_SERVER_ERROR',
         });
       }
-      const isInputRequired = !inputParser.safeParse(undefined).success;
+      const isInputRequired = inputParser ? !inputParser.safeParse(undefined).success : false;
 
-      const o = inputParser.meta();
+      const defaultInputSchema = z.object({});
+      const o = inputParser ? inputParser.meta() : {};
 
-      const inputSchema = unwrapZodType(inputParser, true).meta({
-        ...(o?.title ? { title: o?.title } : {}),
-        ...(o?.description ? { description: o?.description } : {}),
-      });
+      const inputSchema = inputParser
+        ? unwrapZodType(inputParser, true).meta({
+          ...(o?.title ? { title: o?.title } : {}),
+          ...(o?.description ? { description: o?.description } : {}),
+        })
+        : defaultInputSchema;
 
       const requestData: {
         requestBody?: ZodOpenApiRequestBodyObject;
         requestParams?: ZodOpenApiParameters;
       } = {};
-      if (!(pathParameters.length === 0 && instanceofZodTypeLikeVoid(inputSchema))) {
+
+      const hasPathParameters = pathParameters.length > 0;
+      const hasVoidLikeInput = instanceofZodTypeLikeVoid(inputSchema);
+      const hasEmptyObjectInput = !inputParser;
+
+      if (!(hasPathParameters || (!hasVoidLikeInput && !hasEmptyObjectInput))) {
+      } else {
         if (!instanceofZodTypeObject(inputSchema)) {
           throw new TRPCError({
             message: 'Input parser must be a ZodObject',
@@ -161,7 +170,7 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
         httpMethod,
         responseHeaders,
         protect,
-        hasInputs(inputParser),
+        hasInputs(inputParser || defaultInputSchema),
         successDescription,
         errorResponses,
       );

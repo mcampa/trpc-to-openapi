@@ -19,10 +19,10 @@ export const getInputOutputParsers = (
   // @ts-expect-error The types seems to be incorrect
   const inputs = procedure._def.inputs as ZodObject[];
   // @ts-expect-error The types seems to be incorrect
-  const output = procedure._def.output;
+  const output = procedure._def.output as ZodObject | undefined;
 
   return {
-    inputParser: inputs.length >= 2 ? mergeInputs(inputs) : inputs[0],
+    inputParser: inputs.length >= 2 ? mergeInputs(inputs) : inputs.length === 1 ? inputs[0] : undefined,
     outputParser: output,
   };
 };

@@ -69,7 +69,13 @@ describe('generator', () => {
 
       expect(() => {
         generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.noInput] - Input parser expects a Zod validator');
+      }).not.toThrow();
+
+      const document = generateOpenApiDocument(appRouter, defaultDocOpts);
+      expect(document.paths).toBeDefined();
+      expect(document.paths!['/no-input']?.get).toBeDefined();
+      expect(document.paths!['/no-input']?.get?.requestBody).toBeUndefined();
+      expect(document.paths!['/no-input']?.get?.parameters).toBeUndefined();
     }
     {
       const appRouter = t.router({
@@ -81,7 +87,13 @@ describe('generator', () => {
 
       expect(() => {
         generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[mutation.noInput] - Input parser expects a Zod validator');
+      }).not.toThrow();
+
+      const document = generateOpenApiDocument(appRouter, defaultDocOpts);
+      expect(document.paths).toBeDefined();
+      expect(document.paths!['/no-input']?.post).toBeDefined();
+      expect(document.paths!['/no-input']?.post?.requestBody).toBeUndefined();
+      expect(document.paths!['/no-input']?.post?.parameters).toBeUndefined();
     }
   });
 
@@ -3027,7 +3039,7 @@ describe('generator', () => {
         (openApiDocument.paths!['/with-all']!.post!.requestBody as any).content['application/json'],
       ).toEqual(
         (openApiDocument.paths!['/with-all']!.post!.requestBody as any).content[
-          'application/x-www-form-urlencoded'
+        'application/x-www-form-urlencoded'
         ],
       );
       expect(

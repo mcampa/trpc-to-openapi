@@ -34,7 +34,7 @@ export const createContext = async ({
   req,
   res,
 }: // eslint-disable-next-line @typescript-eslint/require-await
-CreateFastifyContextOptions): Promise<Context> => {
+  CreateFastifyContextOptions): Promise<Context> => {
   const requestId = uuid();
   res.header('x-request-id', requestId);
 
@@ -165,7 +165,6 @@ const usersRouter = t.router({
         summary: 'Read all users',
       },
     })
-    .input(z.void())
     .output(
       z.object({
         users: z.array(
