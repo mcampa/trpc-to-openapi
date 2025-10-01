@@ -58,12 +58,17 @@ export const appRouter = t.router({
 import { generateOpenApiDocument } from 'trpc-to-openapi';
 
 import { appRouter } from '../appRouter';
+import { UserSchema, ProductSchema } from '../schemas';
 
 /* 👇 */
 export const openApiDocument = generateOpenApiDocument(appRouter, {
   title: 'tRPC OpenAPI',
   version: '1.0.0',
   baseUrl: 'http://localhost:3000',
+  defs: {
+    UserSchema,
+    ProductSchema,
+  },
 });
 ```
 
