@@ -183,4 +183,64 @@ describe('fastify adapter', () => {
 
     await close();
   });
+
+  test('with single value for optional array field in query params', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/echo' } })
+        .input(z.object({ tags: z.array(z.string()).optional() }))
+        .output(z.object({ tags: z.array(z.string()).optional() }))
+        .query(({ input }) => ({ tags: input.tags })),
+    });
+
+    const { url, close } = await createFastifyServerWithRouter({ router: appRouter });
+
+    // Test with single value - this should work by wrapping the single value in an array
+    {
+      const res = await fetch(`${url}/echo?tags=single`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({
+        tags: ['single'],
+      });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+
+      clearMocks();
+    }
+
+    // Test with multiple values - this should already work
+    {
+      const res = await fetch(`${url}/echo?tags=first&tags=second`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({
+        tags: ['first', 'second'],
+      });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+
+      clearMocks();
+    }
+
+    // Test with no value - should work as optional
+    {
+      const res = await fetch(`${url}/echo`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({
+        tags: undefined,
+      });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+    }
+
+    await close();
+  });
 });
