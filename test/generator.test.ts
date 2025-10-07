@@ -1487,7 +1487,6 @@ describe('generator', () => {
       const appRouter = t.router({
         void: t.procedure
           .meta({ openapi: { method: 'GET', path: '/void' } })
-          //no input schema
           .output(z.void())
           .query(() => undefined),
       });
@@ -1510,7 +1509,6 @@ describe('generator', () => {
       const appRouter = t.router({
         void: t.procedure
           .meta({ openapi: { method: 'POST', path: '/void' } })
-          // .input(z.void())
           .output(z.void())
           .mutation(() => undefined),
       });
@@ -1535,7 +1533,6 @@ describe('generator', () => {
     const appRouter = t.router({
       null: t.procedure
         .meta({ openapi: { method: 'POST', path: '/null' } })
-        .input(z.void())
         .output(z.null())
         .mutation(() => null),
     });

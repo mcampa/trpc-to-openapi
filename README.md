@@ -49,6 +49,7 @@ export const appRouter = t.router({
     .query(({ input }) => {
       return { greeting: `Hello ${input.name}!` };
     }),
+
   getStatus: t.procedure
     .meta({ /* 👉 */ openapi: { method: 'GET', path: '/status' } })
     .output(z.object({ status: z.string() }))
@@ -101,8 +102,8 @@ server.listen(3000);
 
 ```typescript
 // client.ts
-const res = await fetch('http://localhost:3000/say-hello?name=Lily', { method: 'GET' });
-const body = await res.json(); /* { greeting: 'Hello Lily!' } */
+const res = await fetch('http://localhost:3000/say-hello?name=OpenAPI', { method: 'GET' });
+const body = await res.json(); /* { greeting: 'Hello OpenAPI!' } */
 
 const statusRes = await fetch('http://localhost:3000/status', { method: 'GET' });
 const statusBody = await statusRes.json(); /* { status: 'healthy' } */
