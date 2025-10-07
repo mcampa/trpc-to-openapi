@@ -3346,6 +3346,67 @@ describe('generator', () => {
     expect(openApiDocument.paths!['/private']).toBeUndefined();
   });
 
+  test('with defs parameter for schema components', () => {
+    const UserSchema = z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string().email(),
+    });
+
+    const ProductSchema = z.object({
+      id: z.string(),
+      title: z.string(),
+      price: z.number(),
+      description: z.string().optional(),
+    });
+
+    const appRouter = t.router({
+      getUser: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/user' } })
+        .input(z.object({ id: z.string() }))
+        .output(UserSchema)
+        .query(() => ({ id: '1', name: 'John', email: 'john@example.com' })),
+    });
+
+    const openApiDocument = generateOpenApiDocument(appRouter, {
+      ...defaultDocOpts,
+      defs: {
+        UserSchema,
+        ProductSchema,
+      },
+    });
+
+    // Check that schemas are included in components
+    expect(openApiDocument.components?.schemas).toBeDefined();
+    expect(openApiDocument.components?.schemas?.UserSchema).toBeDefined();
+    expect(openApiDocument.components?.schemas?.ProductSchema).toBeDefined();
+
+    // Check that UserSchema is properly defined
+    const userSchema = openApiDocument.components?.schemas?.UserSchema;
+    expect(userSchema).toMatchObject({
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+        email: { type: 'string', format: 'email' },
+      },
+      required: ['id', 'name', 'email'],
+    });
+
+    // Check that ProductSchema is properly defined
+    const productSchema = openApiDocument.components?.schemas?.ProductSchema;
+    expect(productSchema).toMatchObject({
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        title: { type: 'string' },
+        price: { type: 'number' },
+        description: { type: 'string' },
+      },
+      required: ['id', 'title', 'price'],
+    });
+  });
+    
   test('with custom operationId', () => {
     const appRouter = t.router({
       getMe: t.procedure

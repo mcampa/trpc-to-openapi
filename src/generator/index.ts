@@ -1,4 +1,5 @@
 import { ZodOpenApiObject, ZodOpenApiPathsObject, createDocument } from 'zod-openapi';
+import { ZodSchema } from 'zod';
 
 import {
   OpenApiMeta,
@@ -28,6 +29,16 @@ export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>>
    *   filter: ({ metadata }) => metadata.isPublic === true
    */
   filter?: (ctx: { metadata: { openapi: NonNullable<OpenApiMeta['openapi']> } & TMeta }) => boolean;
+  /**
+   * Optional object containing Zod schemas to be included in the OpenAPI document's components/schemas section.
+   *
+   * @example
+   *   defs: {
+   *     UserSchema: z.object({ id: z.string(), name: z.string() }),
+   *     ProductSchema: z.object({ id: z.string(), price: z.number() })
+   *   }
+   */
+  defs?: Record<string, ZodSchema>;
 }
 
 export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
@@ -59,6 +70,7 @@ export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
     ),
     components: {
       securitySchemes,
+      ...(opts.defs && { schemas: opts.defs }),
     },
     tags: opts.tags?.map((tag) => ({ name: tag })),
     externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
