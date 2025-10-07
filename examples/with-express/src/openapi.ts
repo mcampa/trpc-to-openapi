@@ -23,7 +23,7 @@ const PostSchema = z.object({
 const ErrorSchema = z.object({
   message: z.string(),
   code: z.string(),
-  details: z.record(z.any()).optional(),
+  details: z.record(z.string(), z.string()).optional(),
 });
 
 // Generate OpenAPI schema document

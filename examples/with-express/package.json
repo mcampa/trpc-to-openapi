@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --exit-child ./src/index.ts"
+    "dev": "tsx ./src/index.ts"
   },
   "dependencies": {
     "@trpc/server": "^11.1.0",
@@ -12,7 +12,9 @@
     "jsonwebtoken": "^9.0.0",
     "swagger-ui-express": "^4.6.3",
     "uuid": "^11.0.3",
-    "zod": "^4.0.0"
+    "trpc-to-openapi": "workspace:*",
+    "zod": "^4.0.0",
+    "zod-openapi": "5.4.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",
@@ -21,8 +23,7 @@
     "@types/node": "^22",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^9.0.1",
-    "ts-node": "^10.9.1",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "tsx": "^4.20.0",
+    "typescript": "5.8.3"
   }
 }

@@ -17,7 +17,6 @@ export const getInputOutputParsers = (
   outputParser: ZodObject | undefined;
   hasInputsDefined: boolean;
 } => {
-  // @ts-expect-error The types seems to be incorrect
   const inputs = procedure._def.inputs as ZodObject[];
   // @ts-expect-error The types seems to be incorrect
   const output = procedure._def.output as ZodObject | undefined;
@@ -57,7 +56,6 @@ export const forEachOpenApiProcedure = <TMeta = Record<string, unknown>>(
   }) => void,
 ) => {
   for (const [path, procedure] of Object.entries(procedureRecord)) {
-    // @ts-expect-error FIXME
     const meta = procedure._def.meta as unknown as OpenApiMeta | undefined;
     if (meta?.openapi && meta.openapi.enabled !== false) {
       const type = getProcedureType(procedure as OpenApiProcedure);

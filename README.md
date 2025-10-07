@@ -23,6 +23,8 @@ Note: This project is a fork of a fork, with full credit to the original authors
 **1. Install `trpc-to-openapi`.**
 
 ```bash
+# pnpm
+pnpm add trpc-to-openapi
 # npm
 npm install trpc-to-openapi
 # yarn
@@ -399,8 +401,6 @@ Please see [full typings here](src/adapters/node-http/core.ts).
 | `maxBodySize`   | `number`   | Maximum request body size in bytes (default: 100kb).   | `false`  |
 
 ---
-
-_Still using tRPC v9? See our [`.interop()`](examples/with-interop) example._
 
 ## License
 
