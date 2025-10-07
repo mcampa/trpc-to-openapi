@@ -3,24 +3,29 @@ import fastifySwagger from '@fastify/swagger';
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify from 'fastify';
 import { fastifyTRPCOpenApiPlugin } from 'trpc-to-openapi';
-
+import fastifySwaggerUi from '@fastify/swagger-ui';
 import { openApiDocument } from './openapi';
 import { appRouter, createContext } from './router';
 
-const app = Fastify();
+const app = Fastify({
+  logger: true,
+});
 
 async function main() {
   // Setup CORS
-  await app.register(cors);
+
+  await app.register(cors, {});
 
   // Handle incoming tRPC requests
+
   await app.register(fastifyTRPCPlugin, {
     prefix: '/trpc',
     useWss: false,
     trpcOptions: { router: appRouter, createContext },
-  } as any);
+  });
 
   // Handle incoming OpenAPI requests
+
   await app.register(fastifyTRPCOpenApiPlugin, {
     basePath: '/api',
     router: appRouter,
@@ -31,18 +36,19 @@ async function main() {
   app.get('/openapi.json', () => openApiDocument);
 
   // Server Swagger UI
+
   await app.register(fastifySwagger, {
-    routePrefix: '/docs',
     mode: 'static',
     specification: { document: openApiDocument },
-    uiConfig: { displayOperationId: true },
-    exposeRoute: true,
+  });
+
+  await app.register(fastifySwaggerUi as any, {
+    routePrefix: '/docs',
   });
 
   await app
     .listen({ port: 3000 })
     .then((address) => {
-      app.swagger();
       console.log(`Server started on ${address}\nSwagger UI: http://localhost:3000/docs`);
     })
     .catch((e) => {

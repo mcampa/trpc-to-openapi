@@ -1,6 +1,5 @@
 import { TRPCError, initTRPC } from '@trpc/server';
 import { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
-import { type FastifyReply, type FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { OpenApiMeta } from 'trpc-to-openapi';
 import { v4 as uuid } from 'uuid';
@@ -13,8 +12,8 @@ const jwtSecret = uuid();
 export type Context = {
   user: User | null;
   requestId: string;
-  req: FastifyRequest;
-  res: FastifyReply;
+  req: CreateFastifyContextOptions['req'];
+  res: CreateFastifyContextOptions['res'];
 };
 
 const t = initTRPC
