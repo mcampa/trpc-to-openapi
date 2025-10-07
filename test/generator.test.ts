@@ -63,13 +63,30 @@ describe('generator', () => {
       const appRouter = t.router({
         noInput: t.procedure
           .meta({ openapi: { method: 'GET', path: '/no-input' } })
+          .input(z.void())
           .output(z.object({ name: z.string() }))
           .query(() => ({ name: 'mcampa' })),
       });
 
-      expect(() => {
-        generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.noInput] - Input parser expects a Zod validator');
+      const document = generateOpenApiDocument(appRouter, defaultDocOpts);
+      expect(document.paths).toBeDefined();
+      expect(document.paths!['/no-input']?.get).toBeDefined();
+      expect(document.paths!['/no-input']?.get?.requestBody).toBeUndefined();
+      expect(document.paths!['/no-input']?.get?.parameters).toBeUndefined();
+    }
+    {
+      const appRouter = t.router({
+        noInput: t.procedure
+          .meta({ openapi: { method: 'GET', path: '/no-input' } })
+          .output(z.object({ name: z.string() }))
+          .query(() => ({ name: 'mcampa' })),
+      });
+
+      const document = generateOpenApiDocument(appRouter, defaultDocOpts);
+      expect(document.paths).toBeDefined();
+      expect(document.paths!['/no-input']?.get).toBeDefined();
+      expect(document.paths!['/no-input']?.get?.requestBody).toBeUndefined();
+      expect(document.paths!['/no-input']?.get?.parameters).toBeUndefined();
     }
     {
       const appRouter = t.router({
@@ -79,9 +96,11 @@ describe('generator', () => {
           .mutation(() => ({ name: 'mcampa' })),
       });
 
-      expect(() => {
-        generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[mutation.noInput] - Input parser expects a Zod validator');
+      const document = generateOpenApiDocument(appRouter, defaultDocOpts);
+      expect(document.paths).toBeDefined();
+      expect(document.paths!['/no-input']?.post).toBeDefined();
+      expect(document.paths!['/no-input']?.post?.requestBody).toBeUndefined();
+      expect(document.paths!['/no-input']?.post?.parameters).toBeUndefined();
     }
   });
 
@@ -1467,8 +1486,29 @@ describe('generator', () => {
     {
       const appRouter = t.router({
         void: t.procedure
+          .meta({ openapi: { method: 'GET', path: '/void' } })
+          .output(z.void())
+          .query(() => undefined),
+      });
+
+      const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+
+      expect(openApiDocument.paths!['/void']!.get!.parameters).toEqual(undefined);
+      expect(openApiDocument.paths!['/void']!.get!.responses?.[200]).toMatchInlineSnapshot(`
+        Object {
+          "content": Object {
+            "application/json": Object {
+              "schema": Object {},
+            },
+          },
+          "description": "Successful response",
+        }
+      `);
+    }
+    {
+      const appRouter = t.router({
+        void: t.procedure
           .meta({ openapi: { method: 'POST', path: '/void' } })
-          .input(z.void())
           .output(z.void())
           .mutation(() => undefined),
       });
@@ -1493,7 +1533,6 @@ describe('generator', () => {
     const appRouter = t.router({
       null: t.procedure
         .meta({ openapi: { method: 'POST', path: '/null' } })
-        .input(z.void())
         .output(z.null())
         .mutation(() => null),
     });
@@ -3450,7 +3489,7 @@ describe('generator', () => {
       required: ['id', 'title', 'price'],
     });
   });
-    
+
   test('with custom operationId', () => {
     const appRouter = t.router({
       getMe: t.procedure

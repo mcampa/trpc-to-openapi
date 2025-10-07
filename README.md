@@ -48,6 +48,13 @@ export const appRouter = t.router({
     .output(z.object({ greeting: z.string() }))
     .query(({ input }) => {
       return { greeting: `Hello ${input.name}!` };
+    }),
+
+  getStatus: t.procedure
+    .meta({ /* 👉 */ openapi: { method: 'GET', path: '/status' } })
+    .output(z.object({ status: z.string() }))
+    .query(() => {
+      return { status: 'healthy' };
     });
 });
 ```
@@ -95,8 +102,11 @@ server.listen(3000);
 
 ```typescript
 // client.ts
-const res = await fetch('http://localhost:3000/say-hello?name=Lily', { method: 'GET' });
-const body = await res.json(); /* { greeting: 'Hello Lily!' } */
+const res = await fetch('http://localhost:3000/say-hello?name=OpenAPI', { method: 'GET' });
+const body = await res.json(); /* { greeting: 'Hello OpenAPI!' } */
+
+const statusRes = await fetch('http://localhost:3000/status', { method: 'GET' });
+const statusBody = await statusRes.json(); /* { status: 'healthy' } */
 ```
 
 ## Requirements
@@ -108,12 +118,13 @@ Peer dependencies:
 
 For a procedure to support OpenAPI the following _must_ be true:
 
-- Both `input` and `output` parsers are present AND use `Zod` validation.
-- Query `input` parsers extend `Object<{ [string]: String | Number | BigInt | Date }>` or `Void`.
-- Mutation `input` parsers extend `Object<{ [string]: AnyType }>` or `Void`.
+- An `output` parser is present AND uses `Zod` validation.
+- If an `input` parser is present, it must use `Zod` validation.
+- Query `input` parsers (when present) extend `Object<{ [string]: String | Number | BigInt | Date }>` or `Void`.
+- Mutation `input` parsers (when present) extend `Object<{ [string]: AnyType }>` or `Void`.
 - `meta.openapi.method` is `GET`, `POST`, `PATCH`, `PUT` or `DELETE`.
 - `meta.openapi.path` is a string starting with `/`.
-- `meta.openapi.path` parameters exist in `input` parser as `String | Number | BigInt | Date`
+- `meta.openapi.path` parameters (when present) exist in `input` parser as `String | Number | BigInt | Date`
 
 Please note:
 
@@ -344,16 +355,16 @@ main();
 
 Please see [full typings here](src/generator/index.ts).
 
-| Property          | Type                                   | Description                                             | Required |
-| ----------------- | -------------------------------------- | ------------------------------------------------------- | -------- |
-| `title`           | `string`                               | The title of the API.                                   | `true`   |
-| `description`     | `string`                               | A short description of the API.                         | `false`  |
-| `version`         | `string`                               | The version of the OpenAPI document.                    | `true`   |
-| `baseUrl`         | `string`                               | The base URL of the target server.                      | `true`   |
-| `docsUrl`         | `string`                               | A URL to any external documentation.                    | `false`  |
-| `tags`            | `string[]`                             | A list for ordering endpoint groups.                    | `false`  |
-| `securitySchemes` | `Record<string, SecuritySchemeObject>` | Defaults to `Authorization` header with `Bearer` scheme | `false`  |
-| `filter` | `(ctx: { metadata: { openapi: NonNullable<OpenApiMeta['openapi']> } & TMeta }) => boolean` | Optional filter function to include/exclude procedures from the generated OpenAPI document. | `false`  |
+| Property          | Type                                                                                       | Description                                                                                 | Required |
+| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | -------- |
+| `title`           | `string`                                                                                   | The title of the API.                                                                       | `true`   |
+| `description`     | `string`                                                                                   | A short description of the API.                                                             | `false`  |
+| `version`         | `string`                                                                                   | The version of the OpenAPI document.                                                        | `true`   |
+| `baseUrl`         | `string`                                                                                   | The base URL of the target server.                                                          | `true`   |
+| `docsUrl`         | `string`                                                                                   | A URL to any external documentation.                                                        | `false`  |
+| `tags`            | `string[]`                                                                                 | A list for ordering endpoint groups.                                                        | `false`  |
+| `securitySchemes` | `Record<string, SecuritySchemeObject>`                                                     | Defaults to `Authorization` header with `Bearer` scheme                                     | `false`  |
+| `filter`          | `(ctx: { metadata: { openapi: NonNullable<OpenApiMeta['openapi']> } & TMeta }) => boolean` | Optional filter function to include/exclude procedures from the generated OpenAPI document. | `false`  |
 
 #### OpenApiMeta
 

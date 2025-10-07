@@ -94,7 +94,7 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
         });
       }
 
-      const { inputParser, outputParser } = getInputOutputParsers(procedure);
+      const { inputParser, outputParser, hasInputsDefined } = getInputOutputParsers(procedure);
 
       if (!instanceofZodType(inputParser)) {
         throw new TRPCError({
@@ -108,6 +108,7 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
           code: 'INTERNAL_SERVER_ERROR',
         });
       }
+
       const isInputRequired = !inputParser.safeParse(undefined).success;
 
       const o = inputParser.meta();
@@ -120,7 +121,10 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
         requestBody?: ZodOpenApiRequestBodyObject;
         requestParams?: ZodOpenApiParameters;
       } = {};
-      if (!(pathParameters.length === 0 && instanceofZodTypeLikeVoid(inputSchema))) {
+      const hasPathParameters = pathParameters.length > 0;
+      const hasVoidLikeInput = instanceofZodTypeLikeVoid(inputSchema);
+
+      if (hasInputsDefined && (hasPathParameters || !hasVoidLikeInput)) {
         if (!instanceofZodTypeObject(inputSchema)) {
           throw new TRPCError({
             message: 'Input parser must be a ZodObject',
@@ -135,23 +139,21 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
             pathParameters,
             contentTypes,
           );
-          requestData.requestParams =
-            getParameterObjects(
-              inputSchema,
-              isInputRequired,
-              pathParameters,
-              requestHeaders,
-              'path',
-            ) ?? {};
+          requestData.requestParams = getParameterObjects(
+            inputSchema,
+            isInputRequired,
+            pathParameters,
+            requestHeaders,
+            'path',
+          );
         } else {
-          requestData.requestParams =
-            getParameterObjects(
-              inputSchema,
-              isInputRequired,
-              pathParameters,
-              requestHeaders,
-              'all',
-            ) ?? {};
+          requestData.requestParams = getParameterObjects(
+            inputSchema,
+            isInputRequired,
+            pathParameters,
+            requestHeaders,
+            'all',
+          );
         }
       }
 
