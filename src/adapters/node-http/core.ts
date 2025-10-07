@@ -114,7 +114,7 @@ export const createOpenApiNodeHttpHandler = <
         });
       }
 
-      const inputParser = getInputOutputParsers(procedure.procedure).inputParser as ZodTypeAny;
+      const { inputParser } = getInputOutputParsers(procedure.procedure);
       const unwrappedSchema = unwrapZodType(inputParser, true);
 
       // input should stay undefined if z.void()
@@ -130,7 +130,7 @@ export const createOpenApiNodeHttpHandler = <
         if (!useBody) {
           for (const [key, shape] of Object.entries(unwrappedSchema.shape)) {
             let isArray = false;
-            
+
             // Check if it's a direct array
             if (shape instanceof ZodArray) {
               isArray = true;
@@ -142,7 +142,7 @@ export const createOpenApiNodeHttpHandler = <
                 isArray = true;
               }
             }
-            
+
             if (isArray && input[key] !== undefined && !Array.isArray(input[key])) {
               input[key] = [input[key]];
             }
@@ -228,7 +228,7 @@ export const createOpenApiNodeHttpHandler = <
         ...errorShape, // Pass the error through
         message: isInputValidationError
           ? 'Input validation failed'
-          : errorShape?.message ?? error.message ?? 'An error occurred',
+          : (errorShape?.message ?? error.message ?? 'An error occurred'),
         code: error.code,
         issues: isInputValidationError ? (error.cause as ZodError).issues : undefined,
       };

@@ -13,17 +13,28 @@ const mergeInputs = (inputParsers: ZodObject[]): ZodObject => {
 export const getInputOutputParsers = (
   procedure: OpenApiProcedure,
 ): {
-  inputParser: ZodObject | undefined;
+  inputParser: ZodObject;
   outputParser: ZodObject | undefined;
+  hasInputsDefined: boolean;
 } => {
   // @ts-expect-error The types seems to be incorrect
   const inputs = procedure._def.inputs as ZodObject[];
   // @ts-expect-error The types seems to be incorrect
-  const output = procedure._def.output;
+  const output = procedure._def.output as ZodObject | undefined;
+
+  let inputParser: ZodObject;
+  if (inputs.length >= 2) {
+    inputParser = mergeInputs(inputs);
+  } else if (inputs.length === 1) {
+    inputParser = inputs[0]!;
+  } else {
+    inputParser = z.object({});
+  }
 
   return {
-    inputParser: inputs.length >= 2 ? mergeInputs(inputs) : inputs[0],
+    inputParser,
     outputParser: output,
+    hasInputsDefined: inputs.length > 0,
   };
 };
 

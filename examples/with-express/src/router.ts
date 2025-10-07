@@ -167,7 +167,6 @@ const usersRouter = t.router({
         summary: 'Read all users',
       },
     })
-    .input(z.void())
     .output(
       z.object({
         users: z.array(
@@ -187,6 +186,27 @@ const usersRouter = t.router({
       }));
 
       return { users };
+    }),
+  getHealth: publicProcedure
+    .meta({
+      openapi: {
+        method: 'GET',
+        path: '/health',
+        tags: ['system'],
+        summary: 'Health check endpoint',
+      },
+    })
+    .output(
+      z.object({
+        status: z.string(),
+        timestamp: z.string(),
+      }),
+    )
+    .query(() => {
+      return {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+      };
     }),
   getUserById: publicProcedure
     .meta({
