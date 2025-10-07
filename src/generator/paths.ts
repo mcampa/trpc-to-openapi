@@ -1,5 +1,4 @@
 import { TRPCError } from '@trpc/server';
-import { z } from 'zod';
 import {
   ZodOpenApiParameters,
   ZodOpenApiPathsObject,
@@ -112,12 +111,11 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
       const isInputRequired = !inputParser.safeParse(undefined).success;
 
       const o = inputParser.meta();
-
       const inputSchema = unwrapZodType(inputParser, true).meta({
         ...(o?.title ? { title: o?.title } : {}),
         ...(o?.description ? { description: o?.description } : {}),
+        ...(o?.examples ? { examples: o?.examples } : {}),
       });
-
       const requestData: {
         requestBody?: ZodOpenApiRequestBodyObject;
         requestParams?: ZodOpenApiParameters;

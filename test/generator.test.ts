@@ -3116,10 +3116,54 @@ describe('generator', () => {
         .mutation(({ input }) => ({
           output: `${input.greeting} ${input.name}`,
         })),
+      multipleExamples: t.procedure
+        .meta({
+          openapi: {
+            method: 'POST',
+            path: '/multiple-examples',
+          },
+        })
+        .input(
+          z
+            .object({ name: z.string() })
+            .meta({ examples: { Lily: { name: 'Lily' }, John: { name: 'John' } } }),
+        )
+        .output(z.object({ output: z.string() }))
+        .mutation(({ input }) => ({
+          output: `${input.name}`,
+        })),
     });
 
     const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
 
+    expect(openApiDocument.paths!['/multiple-examples']!.post!.requestBody).toMatchInlineSnapshot(`
+      Object {
+        "content": Object {
+          "application/json": Object {
+            "schema": Object {
+              "examples": Object {
+                "John": Object {
+                  "name": "John",
+                },
+                "Lily": Object {
+                  "name": "Lily",
+                },
+              },
+              "properties": Object {
+                "name": Object {
+                  "type": "string",
+                },
+              },
+              "required": Array [
+                "name",
+              ],
+              "type": "object",
+            },
+          },
+        },
+        "required": true,
+      }
+    `);
     expect(openApiDocument.paths!['/query-example/{name}']!.get!.parameters).toMatchInlineSnapshot(`
       Array [
         Object {
