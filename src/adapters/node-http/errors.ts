@@ -20,6 +20,8 @@ export const TRPC_ERROR_CODE_HTTP_STATUS: Record<TRPCError['code'], number> = {
   BAD_GATEWAY: 502,
   SERVICE_UNAVAILABLE: 503,
   GATEWAY_TIMEOUT: 504,
+  PAYMENT_REQUIRED: 402,
+  PRECONDITION_REQUIRED: 428,
 };
 
 export const HTTP_STATUS_TRPC_ERROR_CODE: Record<number, TRPCError['code']> = {
@@ -41,6 +43,8 @@ export const HTTP_STATUS_TRPC_ERROR_CODE: Record<number, TRPCError['code']> = {
   502: 'BAD_GATEWAY',
   503: 'SERVICE_UNAVAILABLE',
   504: 'GATEWAY_TIMEOUT',
+  402: 'PAYMENT_REQUIRED',
+  428: 'PRECONDITION_REQUIRED',
 };
 
 export const TRPC_ERROR_CODE_MESSAGE: Record<TRPCError['code'], string> = {
@@ -63,6 +67,8 @@ export const TRPC_ERROR_CODE_MESSAGE: Record<TRPCError['code'], string> = {
   SERVICE_UNAVAILABLE: 'Service unavailable',
   GATEWAY_TIMEOUT: 'Gateway timeout',
   UNSUPPORTED_MEDIA_TYPE: 'Unsupported media type',
+  PAYMENT_REQUIRED: 'Payment required',
+  PRECONDITION_REQUIRED: 'Precondition required',
 };
 
 export function getErrorFromUnknown(cause: unknown): TRPCError {

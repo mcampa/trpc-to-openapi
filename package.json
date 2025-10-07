@@ -27,23 +27,13 @@
       "types": "./dist/cjs/index.d.ts"
     }
   },
-  "workspaces": [
-    ".",
-    "examples/with-nextjs-appdir",
-    "examples/with-nextjs",
-    "examples/with-express",
-    "examples/with-interop",
-    "examples/with-serverless",
-    "examples/with-fastify",
-    "examples/with-nuxtjs"
-  ],
   "scripts": {
     "t": "jest",
     "test": "tsc --noEmit && jest --verbose",
     "lint": "eslint . --ext .ts",
     "lint-fix": "eslint . --ext .ts --fix",
     "format": "prettier --write ./src ./test ./examples",
-    "build": "npm test && rimraf dist && npm run build:cjs && npm run build:esm",
+    "build": "pnpm test && rimraf dist && pnpm run build:cjs && pnpm run build:esm",
     "build:cjs": "tsc -p tsconfig.build.cjs.json",
     "build:esm": "tsc -p tsconfig.build.esm.json",
     "postbuild": "node rename.js"
@@ -85,6 +75,7 @@
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.8.3",
+    "zod": "^4.0.0",
     "zod-openapi": "^5.0.1"
   },
   "optionalDependencies": {

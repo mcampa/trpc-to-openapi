@@ -46,6 +46,7 @@ export type OpenApiProcedure = Procedure<
   {
     input: any;
     output: any;
+    meta: TRPCMeta;
   }
 >;
 

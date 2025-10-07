@@ -23,6 +23,8 @@ Note: This project is a fork of a fork, with full credit to the original authors
 **1. Install `trpc-to-openapi`.**
 
 ```bash
+# pnpm
+pnpm add trpc-to-openapi
 # npm
 npm install trpc-to-openapi
 # yarn

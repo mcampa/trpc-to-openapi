@@ -5,6 +5,6 @@
 This example shows the pattern to use a tRPC v10 `.interop()` router whilst also supporting `trpc-to-openapi`.
 
 ```bash
-npm install @trpc/server@next
-npm install trpc-to-openapi@0 --force
+pnpm add @trpc/server@next
+pnpm add trpc-to-openapi@0 --force
 ```
