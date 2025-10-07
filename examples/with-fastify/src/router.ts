@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-floating-promises, @typescript-eslint/ban-ts-comment */
 import { TRPCError, initTRPC } from '@trpc/server';
 import { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify';
 import { type FastifyReply, type FastifyRequest } from 'fastify';
@@ -33,8 +32,7 @@ const t = initTRPC
 export const createContext = async ({
   req,
   res,
-}: // eslint-disable-next-line @typescript-eslint/require-await
-  CreateFastifyContextOptions): Promise<Context> => {
+}: CreateFastifyContextOptions): Promise<Context> => {
   const requestId = uuid();
   res.header('x-request-id', requestId);
 

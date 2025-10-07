@@ -1,10 +1,3 @@
-/* 
-  eslint-disable
-  @typescript-eslint/no-misused-promises,
-  @typescript-eslint/no-unsafe-argument,
-  @typescript-eslint/no-explicit-any,
-  promise/always-return
- */
 import cors from '@fastify/cors';
 import fastifySwagger from '@fastify/swagger';
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';

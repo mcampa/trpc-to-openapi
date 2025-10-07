@@ -17,6 +17,6 @@
     "trpc-nuxt": "1.2.0",
     "trpc-to-openapi": "workspace:*",
     "zod": "^4.0.0",
-    "zod-openapi": "^5.0.1"
+    "zod-openapi": "5.4.2"
   }
 }
