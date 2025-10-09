@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx ./src/index.ts"
+    "dev": "tsx watch ./src/index.ts"
   },
   "dependencies": {
     "@trpc/server": "^11.1.0",

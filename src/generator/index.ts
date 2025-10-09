@@ -1,4 +1,9 @@
-import { ZodOpenApiObject, ZodOpenApiPathsObject, createDocument } from 'zod-openapi';
+import {
+  CreateDocumentOptions,
+  ZodOpenApiObject,
+  ZodOpenApiPathsObject,
+  createDocument,
+} from 'zod-openapi';
 import { ZodSchema } from 'zod';
 
 import {
@@ -19,6 +24,7 @@ export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>>
   tags?: string[];
   securitySchemes?: Record<string, SecuritySchemeObject>;
   paths?: ZodOpenApiPathsObject;
+
   /**
    * Optional filter function to include/exclude procedures from the generated OpenAPI document.
    *
@@ -29,6 +35,7 @@ export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>>
    *   filter: ({ metadata }) => metadata.isPublic === true
    */
   filter?: (ctx: { metadata: { openapi: NonNullable<OpenApiMeta['openapi']> } & TMeta }) => boolean;
+
   /**
    * Optional object containing Zod schemas to be included in the OpenAPI document's components/schemas section.
    *
@@ -39,8 +46,12 @@ export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>>
    *   }
    */
   defs?: Record<string, ZodSchema>;
-}
 
+  /**
+   * Use to override the rendered schema
+   */
+  options?: CreateDocumentOptions;
+}
 export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
   appRouter: OpenApiRouter,
   opts: GenerateOpenApiDocumentOptions<TMeta>,
@@ -52,27 +63,30 @@ export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
     },
   };
 
-  return createDocument({
-    openapi: opts.openApiVersion ?? '3.1.0',
-    info: {
-      title: opts.title,
-      description: opts.description,
-      version: opts.version,
-    },
-    servers: [
-      {
-        url: opts.baseUrl,
+  return createDocument(
+    {
+      openapi: opts.openApiVersion ?? '3.1.0',
+      info: {
+        title: opts.title,
+        description: opts.description,
+        version: opts.version,
       },
-    ],
-    paths: mergePaths(
-      getOpenApiPathsObject(appRouter, Object.keys(securitySchemes), opts.filter),
-      opts.paths,
-    ),
-    components: {
-      securitySchemes,
-      ...(opts.defs && { schemas: opts.defs }),
+      servers: [
+        {
+          url: opts.baseUrl,
+        },
+      ],
+      paths: mergePaths(
+        getOpenApiPathsObject(appRouter, Object.keys(securitySchemes), opts.filter),
+        opts.paths,
+      ),
+      components: {
+        ...(opts.defs && { schemas: opts.defs }),
+        securitySchemes,
+      },
+      tags: opts.tags?.map((tag) => ({ name: tag })),
+      externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
     },
-    tags: opts.tags?.map((tag) => ({ name: tag })),
-    externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
-  });
+    opts.options,
+  );
 };

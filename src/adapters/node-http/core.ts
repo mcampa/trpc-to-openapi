@@ -53,11 +53,6 @@ export const createOpenApiNodeHttpHandler = <
 ) => {
   const router = Object.assign({}, opts.router);
 
-  // Validate router
-  if (process.env.NODE_ENV !== 'production') {
-    generateOpenApiDocument(router, { title: '', version: '', baseUrl: '' });
-  }
-
   const { createContext, responseMeta, onError, maxBodySize } = opts;
   const getProcedure = createProcedureCache(router);
 

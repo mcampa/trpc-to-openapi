@@ -22,9 +22,9 @@
   ],
   "exports": {
     ".": {
+      "types": "./dist/cjs/index.d.ts",
       "require": "./dist/cjs/index.js",
-      "import": "./dist/esm/index.mjs",
-      "types": "./dist/cjs/index.d.ts"
+      "import": "./dist/esm/index.mjs"
     }
   },
   "scripts": {

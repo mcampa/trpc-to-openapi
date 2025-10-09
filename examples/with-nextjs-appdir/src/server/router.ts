@@ -29,8 +29,7 @@ const t = initTRPC
 export const createContext = async ({
   req,
   resHeaders,
-}: // eslint-disable-next-line @typescript-eslint/require-await
-FetchCreateContextFnOptions): Promise<Context> => {
+}: FetchCreateContextFnOptions): Promise<Context> => {
   const requestId = uuid();
   resHeaders.set('x-request-id', requestId);
   // set CORS
@@ -79,7 +78,7 @@ const authRouter = t.router({
     })
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         passcode: z.preprocess(
           (arg) => (typeof arg === 'string' ? parseInt(arg) : arg),
           z.number().min(1000).max(9999),
@@ -91,7 +90,7 @@ const authRouter = t.router({
       z.object({
         user: z.object({
           id: z.string().uuid(),
-          email: z.string().email(),
+          email: z.email(),
           name: z.string().min(3),
         }),
       }),
@@ -128,7 +127,7 @@ const authRouter = t.router({
     })
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         passcode: z.preprocess(
           (arg) => (typeof arg === 'string' ? parseInt(arg) : arg),
           z.number().min(1000).max(9999),
@@ -177,7 +176,7 @@ const usersRouter = t.router({
         users: z.array(
           z.object({
             id: z.string().uuid(),
-            email: z.string().email(),
+            email: z.email(),
             name: z.string(),
           }),
         ),
@@ -210,7 +209,7 @@ const usersRouter = t.router({
       z.object({
         user: z.object({
           id: z.string().uuid(),
-          email: z.string().email(),
+          email: z.email(),
           name: z.string(),
         }),
       }),

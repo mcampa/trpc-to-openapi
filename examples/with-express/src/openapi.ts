@@ -7,8 +7,8 @@ import { appRouter } from './router';
 const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string().email(),
-  createdAt: z.string().datetime(),
+  email: z.email(),
+  createdAt: z.iso.datetime(),
 });
 
 const PostSchema = z.object({

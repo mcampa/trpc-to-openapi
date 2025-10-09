@@ -75,7 +75,7 @@ const authRouter = t.router({
     })
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         passcode: z.string().regex(/^[0-9]{4}$/),
         name: z.string().min(3),
       }),
@@ -84,7 +84,7 @@ const authRouter = t.router({
       z.object({
         user: z.object({
           id: z.string().uuid(),
-          email: z.string().email(),
+          email: z.email(),
           name: z.string().min(3),
         }),
       }),
@@ -121,7 +121,7 @@ const authRouter = t.router({
     })
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         passcode: z.string().regex(/^[0-9]{4}$/),
       }),
     )
@@ -167,7 +167,7 @@ const usersRouter = t.router({
         users: z.array(
           z.object({
             id: z.string().uuid(),
-            email: z.string().email(),
+            email: z.email(),
             name: z.string(),
           }),
         ),
@@ -200,7 +200,7 @@ const usersRouter = t.router({
       z.object({
         user: z.object({
           id: z.string().uuid(),
-          email: z.string().email(),
+          email: z.email(),
           name: z.string(),
         }),
       }),

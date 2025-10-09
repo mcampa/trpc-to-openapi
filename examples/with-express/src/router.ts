@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { OpenApiMeta } from 'trpc-to-openapi';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
+import Decimal from 'decimal.js';
 
 import { Post, User, database } from './database';
 
@@ -29,8 +30,7 @@ const t = initTRPC
 export const createContext = async ({
   req,
   res,
-}: // eslint-disable-next-line @typescript-eslint/require-await
-CreateExpressContextOptions): Promise<Context> => {
+}: CreateExpressContextOptions): Promise<Context> => {
   const requestId = uuid();
   res.setHeader('x-request-id', requestId);
 
@@ -74,7 +74,8 @@ const authRouter = t.router({
     })
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
+        weight: z.instanceof(Decimal),
         passcode: z.preprocess(
           (arg) => (typeof arg === 'string' ? parseInt(arg) : arg),
           z.number().min(1000).max(9999),
@@ -85,8 +86,8 @@ const authRouter = t.router({
     .output(
       z.object({
         user: z.object({
-          id: z.string().uuid(),
-          email: z.string().email(),
+          id: z.uuid(),
+          email: z.email(),
           name: z.string().min(3),
         }),
       }),
@@ -123,7 +124,7 @@ const authRouter = t.router({
     })
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         passcode: z.preprocess(
           (arg) => (typeof arg === 'string' ? parseInt(arg) : arg),
           z.number().min(1000).max(9999),
@@ -171,8 +172,8 @@ const usersRouter = t.router({
       z.object({
         users: z.array(
           z.object({
-            id: z.string().uuid(),
-            email: z.string().email(),
+            id: z.uuid(),
+            email: z.email(),
             name: z.string(),
           }),
         ),
@@ -212,21 +213,22 @@ const usersRouter = t.router({
     .meta({
       openapi: {
         method: 'GET',
-        path: '/users/{id}',
+        path: '/users/{id}/{n}',
         tags: ['users'],
         summary: 'Read a user by id',
       },
     })
     .input(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
+        n: z.instanceof(Decimal).meta({ type: 'number', example: 43 }),
       }),
     )
     .output(
       z.object({
         user: z.object({
-          id: z.string().uuid(),
-          email: z.string().email(),
+          id: z.uuid(),
+          email: z.email(),
           name: z.string(),
         }),
       }),
@@ -257,16 +259,16 @@ const postsRouter = t.router({
     })
     .input(
       z.object({
-        userId: z.string().uuid().optional(),
+        userId: z.uuid().optional(),
       }),
     )
     .output(
       z.object({
         posts: z.array(
           z.object({
-            id: z.string().uuid(),
+            id: z.uuid(),
             content: z.string(),
-            userId: z.string().uuid(),
+            userId: z.uuid(),
           }),
         ),
       }),
@@ -293,15 +295,15 @@ const postsRouter = t.router({
     })
     .input(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
       }),
     )
     .output(
       z.object({
         post: z.object({
-          id: z.string().uuid(),
+          id: z.uuid(),
           content: z.string(),
-          userId: z.string().uuid(),
+          userId: z.uuid(),
         }),
       }),
     )
@@ -335,9 +337,9 @@ const postsRouter = t.router({
     .output(
       z.object({
         post: z.object({
-          id: z.string().uuid(),
+          id: z.uuid(),
           content: z.string(),
-          userId: z.string().uuid(),
+          userId: z.uuid(),
         }),
       }),
     )
@@ -364,16 +366,16 @@ const postsRouter = t.router({
     })
     .input(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
         content: z.string().min(1),
       }),
     )
     .output(
       z.object({
         post: z.object({
-          id: z.string().uuid(),
+          id: z.uuid(),
           content: z.string(),
-          userId: z.string().uuid(),
+          userId: z.uuid(),
         }),
       }),
     )
@@ -409,7 +411,7 @@ const postsRouter = t.router({
     })
     .input(
       z.object({
-        id: z.string().uuid(),
+        id: z.uuid(),
       }),
     )
     .output(z.null())

@@ -75,22 +75,6 @@ describe('standalone adapter', () => {
     server?.close();
   });
 
-  // Please note: validating router does not happen in `production`.
-  test('with invalid router', () => {
-    const appRouter = t.router({
-      invalidRoute: t.procedure
-        .meta({ openapi: { method: 'GET', path: '/invalid-route' } })
-        .input(z.void())
-        .query(({ input }) => input),
-    });
-
-    expect(() => {
-      createOpenApiHttpHandler({
-        router: appRouter,
-      });
-    }).toThrowError('[query.invalidRoute] - Output parser expects a Zod validator');
-  });
-
   test('with not found path', async () => {
     const appRouter = t.router({
       ping: t.procedure
