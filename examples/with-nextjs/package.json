@@ -15,7 +15,7 @@
     "nextjs-cors": "2.2.0",
     "react": "^19",
     "react-dom": "^19",
-    "swagger-ui-react": "5.21.0",
+    "swagger-ui-react": "5.29.5",
     "uuid": "^11.0.3",
     "trpc-to-openapi": "workspace:*",
     "zod": "^4.0.0",
