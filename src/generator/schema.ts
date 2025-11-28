@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { ZodObject, ZodAny, z } from 'zod';
+import type { $ZodType } from 'zod/v4/core';
 import {
   ZodOpenApiContentObject,
   ZodOpenApiParameters,
@@ -20,11 +21,55 @@ import {
   instanceofZodTypeKind,
   instanceofZodTypeLikeString,
   instanceofZodTypeLikeVoid,
+  instanceofZodTypeObject,
   instanceofZodTypeOptional,
   unwrapZodType,
   zodSupportsCoerce,
 } from '../utils';
 import { HttpMethods } from './paths';
+
+/**
+ * Flattens a nested Zod object schema into a flat structure with dot notation keys.
+ * For example: { filters: { type: z.string() } } becomes { 'filters.type': z.string() }
+ */
+const flattenObjectSchema = (
+  schema: $ZodType,
+  prefix = '',
+): Record<string, { schema: $ZodType; required: boolean }> => {
+  const result: Record<string, { schema: $ZodType; required: boolean }> = {};
+
+  let unwrappedSchema: $ZodType = schema;
+  let isOptional = false;
+
+  if (instanceofZodTypeOptional(unwrappedSchema)) {
+    isOptional = true;
+    unwrappedSchema = (unwrappedSchema as z.ZodOptional<$ZodType>).unwrap();
+  }
+
+  if (instanceofZodTypeKind(unwrappedSchema, 'default')) {
+    isOptional = true;
+    unwrappedSchema = (unwrappedSchema as z.ZodDefault<$ZodType>).unwrap();
+  }
+
+  if (instanceofZodTypeObject(unwrappedSchema)) {
+    const objectSchema = unwrappedSchema;
+    const shape = objectSchema.shape;
+
+    for (const [key, value] of Object.entries(shape)) {
+      const nestedPrefix = prefix ? `${prefix}.${key}` : key;
+      const flattened = flattenObjectSchema(value as $ZodType, nestedPrefix);
+      Object.assign(result, flattened);
+    }
+
+    if (isOptional && Object.keys(result).length === 0) {
+      result[prefix] = { schema: unwrappedSchema, required: false };
+    }
+  } else {
+    result[prefix] = { schema: unwrappedSchema, required: !isOptional };
+  }
+
+  return result;
+};
 
 export const getParameterObjects = (
   schema: z.ZodObject<z.ZodRawShape>,
@@ -45,7 +90,6 @@ export const getParameterObjects = (
     }
   }
 
-  // @ts-expect-error fix later
   const { path, query } = shapeKeys
     .filter((shapeKey) => {
       const isPathParameter = pathParameters.includes(shapeKey);
@@ -56,10 +100,56 @@ export const getParameterObjects = (
       }
       return true;
     })
-    .map((shapeKey) => {
+    .flatMap((shapeKey) => {
       let shapeSchema = shape[shapeKey]!;
       const isShapeRequired = !(shapeSchema as z.ZodType).safeParse(undefined).success;
       const isPathParameter = pathParameters.includes(shapeKey);
+
+      let unwrappedForCheck: $ZodType = shapeSchema as $ZodType;
+      if (instanceofZodTypeOptional(unwrappedForCheck)) {
+        unwrappedForCheck = (unwrappedForCheck as z.ZodOptional<$ZodType>).unwrap();
+      }
+      if (instanceofZodTypeKind(unwrappedForCheck, 'default')) {
+        unwrappedForCheck = (unwrappedForCheck as z.ZodDefault<$ZodType>).unwrap();
+      }
+
+      if (instanceofZodTypeObject(unwrappedForCheck)) {
+        const flattened = flattenObjectSchema(shapeSchema, shapeKey);
+        return Object.entries(flattened).map(
+          ([flatKey, { schema: flatSchema, required: flatRequired }]) => {
+            let leafSchema: $ZodType = flatSchema;
+            if (instanceofZodTypeOptional(leafSchema)) {
+              leafSchema = (leafSchema as z.ZodOptional<$ZodType>).unwrap();
+            }
+            if (instanceofZodTypeKind(leafSchema, 'default')) {
+              leafSchema = (leafSchema as z.ZodDefault<$ZodType>).unwrap();
+            }
+
+            if (!instanceofZodTypeLikeString(leafSchema)) {
+              if (zodSupportsCoerce) {
+                if (!instanceofZodTypeCoercible(leafSchema)) {
+                  throw new TRPCError({
+                    message: `Input parser key: "${flatKey}" must be ZodString, ZodNumber, ZodBoolean, ZodBigInt or ZodDate`,
+                    code: 'INTERNAL_SERVER_ERROR',
+                  });
+                }
+              } else {
+                throw new TRPCError({
+                  message: `Input parser key: "${flatKey}" must be ZodString`,
+                  code: 'INTERNAL_SERVER_ERROR',
+                });
+              }
+            }
+
+            return {
+              name: flatKey,
+              paramType: isPathParameter ? 'path' : 'query',
+              required: isPathParameter || (required && flatRequired),
+              schema: flatSchema,
+            };
+          },
+        );
+      }
 
       if (!instanceofZodTypeLikeString(shapeSchema)) {
         if (zodSupportsCoerce) {
@@ -87,25 +177,35 @@ export const getParameterObjects = (
         shapeSchema = shapeSchema.unwrap();
       }
 
-      return {
-        name: shapeKey,
-        paramType: isPathParameter ? 'path' : 'query',
-        required: isPathParameter || (required && isShapeRequired),
-        schema: shapeSchema,
-      };
+      return [
+        {
+          name: shapeKey,
+          paramType: isPathParameter ? 'path' : 'query',
+          required: isPathParameter || (required && isShapeRequired),
+          schema: shapeSchema,
+        },
+      ];
     })
     .reduce(
-      ({ path, query }, { name, paramType, schema, required }) =>
-        // @ts-expect-error fix later
-        paramType === 'path'
-          ? {
-              path: { ...path, [name]: required ? schema : (schema as z.ZodType).optional() },
-              query,
-            }
-          : {
-              path,
-              query: { ...query, [name]: required ? schema : (schema as z.ZodType).optional() },
+      ({ path, query }, { name, paramType, schema, required }) => {
+        if (paramType === 'path') {
+          return {
+            path: {
+              ...path,
+              [name]: (required ? schema : (schema as z.ZodType).optional()) as ZodAny,
             },
+            query,
+          };
+        } else {
+          return {
+            path,
+            query: {
+              ...query,
+              [name]: (required ? schema : (schema as z.ZodType).optional()) as ZodAny,
+            },
+          };
+        }
+      },
       { path: {} as Record<string, ZodAny>, query: {} as Record<string, ZodAny> },
     );
 
