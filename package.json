@@ -76,7 +76,7 @@
     "ts-node": "^10.9.1",
     "typescript": "5.8.3",
     "zod": "^4.0.0",
-    "zod-openapi": "5.4.2"
+    "zod-openapi": "5.4.5"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.6.1"
