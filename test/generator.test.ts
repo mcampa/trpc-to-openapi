@@ -3179,6 +3179,14 @@ describe('generator', () => {
       Object {
         "content": Object {
           "application/json": Object {
+            "examples": Object {
+              "John": Object {
+                "name": "John",
+              },
+              "Lily": Object {
+                "name": "Lily",
+              },
+            },
             "schema": Object {
               "examples": Object {
                 "John": Object {

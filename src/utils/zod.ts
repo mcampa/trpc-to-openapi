@@ -49,6 +49,9 @@ export const unwrapZodType = (type: $ZodType, unwrapPreprocess: boolean): ZodTyp
   if (instanceofZodTypeKind(type, 'default')) {
     return unwrapZodType((type as z.ZodDefault<$ZodTypes>).unwrap(), unwrapPreprocess);
   }
+  if (instanceofZodTypeKind(type, 'prefault')) {
+    return unwrapZodType((type as z.ZodDefault<$ZodTypes>).unwrap(), unwrapPreprocess);
+  }
   if (instanceofZodTypeKind(type, 'lazy')) {
     return unwrapZodType((type as z.ZodLazy<$ZodTypes>).def.getter(), unwrapPreprocess);
   }
