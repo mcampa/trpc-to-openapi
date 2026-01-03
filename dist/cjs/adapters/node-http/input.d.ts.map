@@ -1,0 +1,1 @@
+{"version":3,"file":"input.d.ts","sourceRoot":"","sources":["../../../../src/adapters/node-http/input.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,eAAe,EAAE,MAAM,aAAa,CAAC;AAE9C,eAAO,MAAM,QAAQ,GAAI,KAAK,eAAe,EAAE,KAAK,GAAG,KAAG,MAAM,CAAC,MAAM,EAAE,MAAM,GAAG,MAAM,EAAE,CAyBzF,CAAC;AAGF,eAAO,MAAM,OAAO,GAAU,KAAK,eAAe,EAAE,oBAAyB,KAAG,OAAO,CAAC,GAAG,CA0C1F,CAAC"}
