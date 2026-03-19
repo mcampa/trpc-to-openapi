@@ -1,5 +1,9 @@
 ## Changelog
 
+- v3.2.0
+
+  - fix: Zod 4 compatibility for `prefault`, transform pipes, and refined-schema `.omit()` [#155](https://github.com/mcampa/trpc-to-openapi/pull/155) by [@MendyLanda](https://github.com/MendyLanda) (fixes [#153](https://github.com/mcampa/trpc-to-openapi/issues/153))
+
 - v3.1.0
 
   - feat: Add API to override default generated operationId [#107](https://github.com/mcampa/trpc-to-openapi/pull/107) by [@agrippa1994](https://github.com/agrippa1994)
