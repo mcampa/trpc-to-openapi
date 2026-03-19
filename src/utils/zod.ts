@@ -49,10 +49,18 @@ export const unwrapZodType = (type: $ZodType, unwrapPreprocess: boolean): ZodTyp
   if (instanceofZodTypeKind(type, 'default')) {
     return unwrapZodType((type as z.ZodDefault<$ZodTypes>).unwrap(), unwrapPreprocess);
   }
+  if (instanceofZodTypeKind(type, 'prefault')) {
+    return unwrapZodType((type as z.ZodDefault<$ZodTypes>).unwrap(), unwrapPreprocess);
+  }
   if (instanceofZodTypeKind(type, 'lazy')) {
     return unwrapZodType((type as z.ZodLazy<$ZodTypes>).def.getter(), unwrapPreprocess);
   }
   if (instanceofZodTypeKind(type, 'pipe') && unwrapPreprocess) {
+    // For .transform() pipes in Zod 4, def.out is a 'transform' type -
+    // use def.in (the input schema shape) instead
+    if (instanceofZodTypeKind((type as z.ZodPipe<$ZodTypes>)._zod.def.out, 'transform')) {
+      return unwrapZodType((type as z.ZodPipe<$ZodTypes>)._zod.def.in, unwrapPreprocess);
+    }
     return unwrapZodType((type as z.ZodPipe<$ZodTypes>).def.out, unwrapPreprocess);
   }
   return type as ZodType;
