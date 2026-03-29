@@ -125,8 +125,8 @@ importers:
         specifier: ^9.0.0
         version: 9.0.2
       swagger-ui-express:
-        specifier: ^4.6.3
-        version: 4.6.3(express@4.21.2)
+        specifier: ^5.0.1
+        version: 5.0.1(express@4.21.2)
       trpc-to-openapi:
         specifier: workspace:*
         version: link:../..
@@ -5504,8 +5504,8 @@ packages:
   swagger-ui-dist@5.29.3:
     resolution: {integrity: sha512-U99f/2YocRA2Mxqx3eUBRhQonWVtE5dIvMs0Zlsn4a4ip8awMq0JxXhU+Sidtna2WlZrHbK2Rro3RZvYUymRbA==}
 
-  swagger-ui-express@4.6.3:
-    resolution: {integrity: sha512-CDje4PndhTD2HkgyKH3pab+LKspDeB/NhPN2OF1j+piYIamQqBYwAXWESOT1Yju2xFg51bRW9sUng2WxDjzArw==}
+  swagger-ui-express@5.0.1:
+    resolution: {integrity: sha512-SrNU3RiBGTLLmFU8GIJdOdanJTl4TOmT27tt3bWWHppqYmAZ6IDuEuBvMU6nZq0zLEe6b/1rACXCgLZqO6ZfrA==}
     engines: {node: '>= v0.10.32'}
     peerDependencies:
       express: '>=4.0.0 || >=5.0.0-beta'
@@ -12315,7 +12315,7 @@ snapshots:
     dependencies:
       '@scarf/scarf': 1.4.0
 
-  swagger-ui-express@4.6.3(express@4.21.2):
+  swagger-ui-express@5.0.1(express@4.21.2):
     dependencies:
       express: 4.21.2
       swagger-ui-dist: 5.29.3
