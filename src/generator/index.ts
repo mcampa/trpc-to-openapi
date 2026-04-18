@@ -9,10 +9,24 @@ import {
 } from '../types';
 import { getOpenApiPathsObject, mergePaths } from './paths';
 
+export interface OpenApiContactObject {
+  name?: string;
+  url?: string;
+  email?: string;
+}
+
+export interface OpenApiLicenseObject {
+  name: string;
+  identifier?: string;
+  url?: string;
+}
+
 export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>> {
   title: string;
   description?: string;
   version: string;
+  contact?: OpenApiContactObject;
+  license?: OpenApiLicenseObject;
   openApiVersion?: ZodOpenApiObject['openapi'];
   baseUrl: string;
   docsUrl?: string;
@@ -58,6 +72,8 @@ export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
       title: opts.title,
       description: opts.description,
       version: opts.version,
+      ...(opts.contact && { contact: opts.contact }),
+      ...(opts.license && { license: opts.license }),
     },
     servers: [
       {
