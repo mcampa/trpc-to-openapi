@@ -7,7 +7,7 @@ import type {
   RouterRecord,
 } from '@trpc/server/unstable-core-do-not-import';
 import { IncomingMessage } from 'http';
-import type { ZodObject } from 'zod';
+import type { ZodObject } from 'zod/v4';
 import type { $ZodIssue } from 'zod/v4/core';
 
 export { type OpenAPIObject, type SecuritySchemeObject } from 'openapi3-ts/oas31';

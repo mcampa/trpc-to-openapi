@@ -1,5 +1,5 @@
 import { ZodOpenApiObject, ZodOpenApiPathsObject, createDocument } from 'zod-openapi';
-import { ZodSchema } from 'zod';
+import { ZodSchema } from 'zod/v4';
 
 import {
   OpenApiMeta,

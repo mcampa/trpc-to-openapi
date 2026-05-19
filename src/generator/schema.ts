@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { ZodObject, ZodAny, z } from 'zod';
+import { ZodObject, ZodAny, z } from 'zod/v4';
 import {
   ZodOpenApiContentObject,
   ZodOpenApiParameters,
