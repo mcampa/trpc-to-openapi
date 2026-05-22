@@ -3514,4 +3514,27 @@ describe('generator', () => {
 
     expect(openApiDocument.paths!['/metadata/all']!.get!.operationId).toBe('getAllMetadataAboutMe');
   });
+
+  // Repro for https://github.com/mcampa/trpc-to-openapi/pull/151
+  // Zod 4.1.13+ emits discriminated unions as `anyOf` rather than `oneOf`,
+  // and zod-openapi <5.4.4 crashes on Object.entries(jsonSchema.oneOf) when
+  // generating the document.
+  test('discriminated union in input does not crash document generation', () => {
+    const appRouter = t.router({
+      submit: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/submit' } })
+        .input(
+          z.object({
+            payload: z.discriminatedUnion('kind', [
+              z.object({ kind: z.literal('a'), a: z.string() }),
+              z.object({ kind: z.literal('b'), b: z.number() }),
+            ]),
+          }),
+        )
+        .output(z.object({ ok: z.boolean() }))
+        .mutation(() => ({ ok: true })),
+    });
+
+    expect(() => generateOpenApiDocument(appRouter, defaultDocOpts)).not.toThrow();
+  });
 });

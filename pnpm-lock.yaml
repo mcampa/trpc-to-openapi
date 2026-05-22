@@ -100,11 +100,11 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
       zod:
-        specifier: ^4.0.0
-        version: 4.0.14
+        specifier: 4.1.13
+        version: 4.1.13
       zod-openapi:
         specifier: 5.4.2
-        version: 5.4.2(zod@4.0.14)
+        version: 5.4.2(zod@4.1.13)
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu':
         specifier: 4.6.1
@@ -6177,6 +6177,9 @@ packages:
 
   zod@4.0.14:
     resolution: {integrity: sha512-nGFJTnJN6cM2v9kXL+SOBq3AtjQby3Mv5ySGFof5UGRHrRioSJ5iG680cYNjE/yWk671nROcpPj4hAS8nyLhSw==}
+
+  zod@4.1.13:
+    resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
 
 snapshots:
 
@@ -12969,4 +12972,10 @@ snapshots:
     dependencies:
       zod: 4.0.14
 
+  zod-openapi@5.4.2(zod@4.1.13):
+    dependencies:
+      zod: 4.1.13
+
   zod@4.0.14: {}
+
+  zod@4.1.13: {}
