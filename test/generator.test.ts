@@ -1,6 +1,6 @@
 import { initTRPC } from '@trpc/server';
 import { observable } from '@trpc/server/observable';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { GenerateOpenApiDocumentOptions, OpenApiMeta, generateOpenApiDocument } from '../src';
 import * as zodUtils from '../src/utils/zod';
@@ -3165,7 +3165,12 @@ describe('generator', () => {
         .input(
           z
             .object({ name: z.string() })
-            .meta({ examples: { Lily: { name: 'Lily' }, John: { name: 'John' } } }),
+            // zod-openapi v5 types `meta.examples` as `unknown[]`, but its runtime
+            // still accepts the v3-style named-record form used here (and emits it
+            // through to the output schema verbatim — see snapshot below).
+            .meta({
+              examples: { Lily: { name: 'Lily' }, John: { name: 'John' } } as unknown as unknown[],
+            }),
         )
         .output(z.object({ output: z.string() }))
         .mutation(({ input }) => ({

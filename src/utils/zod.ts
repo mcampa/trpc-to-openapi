@@ -1,4 +1,5 @@
-import { ZodObject, ZodRawShape, ZodType, z } from 'zod';
+import { z } from 'zod/v4';
+import type { ZodObject, ZodRawShape, ZodType } from 'zod/v4';
 import type { $ZodType, $ZodTypes } from 'zod/v4/core';
 import type { $ZodTypeDef } from 'zod/v4/core/schemas';
 

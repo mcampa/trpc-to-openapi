@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { IncomingHttpHeaders, IncomingMessage } from 'http';
 import { NextApiRequestCookies, NextApiRequestQuery } from 'next/dist/server/api-utils';
 import { Socket } from 'net';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import {
   CreateOpenApiNextHandlerOptions,

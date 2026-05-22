@@ -1,7 +1,7 @@
 import { TRPCError, initTRPC } from '@trpc/server';
 import fetch from 'node-fetch';
 import superjson from 'superjson';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import {
   CreateOpenApiFetchHandlerOptions,

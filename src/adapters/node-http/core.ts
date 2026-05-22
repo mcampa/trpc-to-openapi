@@ -5,7 +5,8 @@ import {
   type NodeHTTPResponse,
 } from '@trpc/server/adapters/node-http';
 import { getErrorShape, TRPCRequestInfo } from '@trpc/server/unstable-core-do-not-import';
-import { ZodArray, ZodError, ZodTypeAny } from 'zod';
+import { ZodArray } from 'zod/v4';
+import type { ZodError } from 'zod/v4';
 import { NodeHTTPRequest } from '../../types';
 import { generateOpenApiDocument } from '../../generator';
 import {

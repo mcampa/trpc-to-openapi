@@ -1,7 +1,7 @@
 import { initTRPC } from '@trpc/server';
 import fastify from 'fastify';
 import fetch from 'node-fetch';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import {
   CreateOpenApiFastifyPluginOptions,

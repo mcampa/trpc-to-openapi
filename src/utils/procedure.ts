@@ -1,5 +1,6 @@
 import { TRPCProcedureType } from '@trpc/server';
-import { ZodObject, z } from 'zod';
+import { z } from 'zod/v4';
+import type { ZodObject } from 'zod/v4';
 
 import { OpenApiMeta, OpenApiProcedure, OpenApiProcedureRecord } from '../types';
 
