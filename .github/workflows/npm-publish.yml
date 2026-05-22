@@ -1,19 +1,29 @@
 name: NPM Publish
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Node.js CI"]
+    types:
+      - completed
     branches:
       - master
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Only publish if the CI workflow that triggered us actually succeeded.
+    # workflow_run fires on completion regardless of conclusion.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.event.workflow_run.head_sha }}
       cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Check out the exact commit that CI ran against, not just master HEAD
+          # (master may have moved on if another push landed concurrently).
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
