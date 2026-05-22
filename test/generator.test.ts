@@ -1,6 +1,6 @@
 import { initTRPC } from '@trpc/server';
 import { observable } from '@trpc/server/observable';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { GenerateOpenApiDocumentOptions, OpenApiMeta, generateOpenApiDocument } from '../src';
 import * as zodUtils from '../src/utils/zod';
@@ -3165,7 +3165,9 @@ describe('generator', () => {
         .input(
           z
             .object({ name: z.string() })
-            .meta({ examples: { Lily: { name: 'Lily' }, John: { name: 'John' } } }),
+            .meta({
+              examples: { Lily: { name: 'Lily' }, John: { name: 'John' } } as never,
+            }),
         )
         .output(z.object({ output: z.string() }))
         .mutation(({ input }) => ({

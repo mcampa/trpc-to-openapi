@@ -1,7 +1,7 @@
 import { initTRPC } from '@trpc/server';
 import express from 'express';
 import fetch from 'node-fetch';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import {
   CreateOpenApiExpressMiddlewareOptions,

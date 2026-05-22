@@ -2,7 +2,7 @@
 import { initTRPC } from '@trpc/server';
 import { H3Event } from 'h3';
 import httpMocks, { RequestMethod } from 'node-mocks-http';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import {
   CreateOpenApiNuxtHandlerOptions,
