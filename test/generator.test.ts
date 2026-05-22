@@ -1253,7 +1253,7 @@ describe('generator', () => {
                   "id": Object {
                     "description": "User ID",
                     "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
                     "type": "string",
                   },
                   "name": Object {
@@ -1282,7 +1282,7 @@ describe('generator', () => {
                     "id": Object {
                       "description": "User ID",
                       "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
                       "type": "string",
                     },
                     "name": Object {
@@ -1363,7 +1363,7 @@ describe('generator', () => {
             "schema": Object {
               "description": "User ID",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "type": "string",
             },
           },
@@ -1379,7 +1379,7 @@ describe('generator', () => {
                     "id": Object {
                       "description": "User ID",
                       "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
                       "type": "string",
                     },
                     "name": Object {
@@ -3513,5 +3513,28 @@ describe('generator', () => {
     const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
 
     expect(openApiDocument.paths!['/metadata/all']!.get!.operationId).toBe('getAllMetadataAboutMe');
+  });
+
+  // Repro for https://github.com/mcampa/trpc-to-openapi/pull/151
+  // Zod 4.1.13+ emits discriminated unions as `anyOf` rather than `oneOf`,
+  // and zod-openapi <5.4.4 crashes on Object.entries(jsonSchema.oneOf) when
+  // generating the document.
+  test('discriminated union in input does not crash document generation', () => {
+    const appRouter = t.router({
+      submit: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/submit' } })
+        .input(
+          z.object({
+            payload: z.discriminatedUnion('kind', [
+              z.object({ kind: z.literal('a'), a: z.string() }),
+              z.object({ kind: z.literal('b'), b: z.number() }),
+            ]),
+          }),
+        )
+        .output(z.object({ ok: z.boolean() }))
+        .mutation(() => ({ ok: true })),
+    });
+
+    expect(() => generateOpenApiDocument(appRouter, defaultDocOpts)).not.toThrow();
   });
 });
