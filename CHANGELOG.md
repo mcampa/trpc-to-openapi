@@ -1,5 +1,13 @@
 ## Changelog
 
+- v3.3.0
+
+  - feat: add `contact` and `license` fields to `GenerateOpenApiDocumentOptions` [#157](https://github.com/mcampa/trpc-to-openapi/pull/157) by [@liorp](https://github.com/liorp)
+  - feat: support zod v3 (≥3.25) alongside v4 via the `zod/v4` permalink import; widens the `zod` peer dep to `^3.25.0 || ^4.0.0` [#161](https://github.com/mcampa/trpc-to-openapi/pull/161) (supersedes [#158](https://github.com/mcampa/trpc-to-openapi/pull/158) by [@Sam152](https://github.com/Sam152))
+  - fix: bump `zod-openapi` to 5.4.6 and raise its peer dep minimum to `^5.4.4` to avoid the discriminated-union crash on zod ≥4.1.13 [#162](https://github.com/mcampa/trpc-to-openapi/pull/162) (supersedes [#151](https://github.com/mcampa/trpc-to-openapi/pull/151) by [@gaetansenn](https://github.com/gaetansenn))
+  - fix: add OpenAPI extension index signature to contact/license types so they satisfy `zod-openapi`'s `InfoObject` [#160](https://github.com/mcampa/trpc-to-openapi/pull/160)
+  - chore: bump `h3` to `^1.15.5` [#159](https://github.com/mcampa/trpc-to-openapi/pull/159) by [@cpimhoff](https://github.com/cpimhoff)
+
 - v3.2.0
 
   - fix: Zod 4 compatibility for `prefault`, transform pipes, and refined-schema `.omit()` [#155](https://github.com/mcampa/trpc-to-openapi/pull/155) by [@MendyLanda](https://github.com/MendyLanda) (fixes [#153](https://github.com/mcampa/trpc-to-openapi/issues/153))
