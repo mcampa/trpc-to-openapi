@@ -10,12 +10,14 @@ import {
 import { getOpenApiPathsObject, mergePaths } from './paths';
 
 export interface OpenApiContactObject {
+  [key: `x-${string}`]: any;
   name?: string;
   url?: string;
   email?: string;
 }
 
 export interface OpenApiLicenseObject {
+  [key: `x-${string}`]: any;
   name: string;
   identifier?: string;
   url?: string;
