@@ -95,4 +95,25 @@ describe('hono adapter', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ greeting: 'Hello Sam!' });
   });
+
+  test('returns 404 OpenApiErrorResponse for unmatched route', async () => {
+    const appRouter = t.router({
+      ping: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/ping' } })
+        .input(z.void())
+        .output(z.literal('pong'))
+        .mutation(() => 'pong' as const),
+    });
+
+    const app = createApp(appRouter, '/');
+    const res = await app.request('/does-not-exist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ message: 'Not found', code: 'NOT_FOUND' }),
+    );
+  });
 });
