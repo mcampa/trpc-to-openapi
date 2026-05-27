@@ -53,4 +53,30 @@ describe('hono adapter', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ payload: 'hi' });
   });
+
+  test('createContext receives the Hono Context as second arg', async () => {
+    const appRouter = t.router({
+      whoami: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/whoami' } })
+        .input(z.void())
+        .output(z.object({ token: z.string() }))
+        .query(({ ctx }) => ({ token: (ctx as { token: string }).token })),
+    });
+
+    const app = new Hono();
+    const createContext = jest.fn((_opts: unknown, c: Context) => ({
+      token: c.req.header('Authorization') ?? 'anon',
+    }));
+    app.use('/*', createOpenApiHonoHandler({ router: appRouter, endpoint: '/', createContext }));
+
+    const res = await app.request('/whoami', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer abc123' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ token: 'Bearer abc123' });
+    expect(createContext).toHaveBeenCalledTimes(1);
+    expect(typeof createContext.mock.calls[0]![1].req.header).toBe('function');
+  });
 });
