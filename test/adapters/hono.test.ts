@@ -33,4 +33,24 @@ describe('hono adapter', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
   });
+
+  test('with valid POST mutation (JSON body)', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/echo' } })
+        .input(z.object({ payload: z.string() }))
+        .output(z.object({ payload: z.string() }))
+        .mutation(({ input }) => ({ payload: input.payload })),
+    });
+
+    const app = createApp(appRouter, '/');
+    const res = await app.request('/echo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payload: 'hi' }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ payload: 'hi' });
+  });
 });
