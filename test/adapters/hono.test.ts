@@ -79,4 +79,20 @@ describe('hono adapter', () => {
     expect(createContext).toHaveBeenCalledTimes(1);
     expect(typeof createContext.mock.calls[0]![1].req.header).toBe('function');
   });
+
+  test('strips the endpoint prefix when mounted under a sub-path', async () => {
+    const appRouter = t.router({
+      sayHello: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/say-hello' } })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ greeting: z.string() }))
+        .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
+    });
+
+    const app = createApp(appRouter, '/api');
+    const res = await app.request('/api/say-hello?name=Sam', { method: 'GET' });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ greeting: 'Hello Sam!' });
+  });
 });
