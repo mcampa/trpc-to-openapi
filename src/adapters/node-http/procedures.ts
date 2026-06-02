@@ -46,7 +46,12 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     }
 
     const procedure = procedureMethodCache.get(procedureRegExp);
-    const pathInput = procedureRegExp.exec(path)?.groups ?? {};
+    const pathInput = Object.fromEntries(
+      Object.entries(procedureRegExp.exec(path)?.groups ?? {}).map(([key, value]) => [
+        key,
+        decodeURIComponent(value),
+      ]),
+    );
 
     return { procedure, pathInput };
   };
