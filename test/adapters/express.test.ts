@@ -71,6 +71,11 @@ describe('express adapter', () => {
         .input(z.object({ name: z.string() }))
         .output(z.object({ greeting: z.string() }))
         .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
+      sayHelloWithParam: t.procedure
+        .meta({ openapi: { method: 'GET', path: `/say-hello-with-param/{name}` } })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ greeting: z.string() }))
+        .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
     const { url, close } = createExpressServerWithRouter({
@@ -111,6 +116,33 @@ describe('express adapter', () => {
       expect(createContextMock).toHaveBeenCalledTimes(1);
       expect(responseMetaMock).toHaveBeenCalledTimes(1);
       expect(onErrorMock).toHaveBeenCalledTimes(0);
+
+      clearMocks();
+    }
+    {
+      const res = await fetch(`${url}/say-hello-with-param/Lily`, { method: 'GET' });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ greeting: 'Hello Lily!' });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+
+      clearMocks();
+    }
+
+    {
+      const res = await fetch(`${url}/say-hello-with-param/${encodeURIComponent('Li::ly')}`, {
+        method: 'GET',
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ greeting: 'Hello Li::ly!' });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+
+      clearMocks();
     }
 
     close();
