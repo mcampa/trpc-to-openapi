@@ -351,6 +351,30 @@ async function main() {
 main();
 ```
 
+#### With Hono
+
+Mount the OpenAPI routes as [Hono](https://hono.dev) middleware. `createContext` receives the Hono `Context` as its second argument, so you can read `c.env`, headers, etc.
+
+```typescript
+import { Hono } from 'hono';
+import { createOpenApiHonoHandler } from 'trpc-to-openapi';
+
+import { appRouter } from './router';
+
+const app = new Hono();
+
+app.use(
+  '/api/*',
+  createOpenApiHonoHandler({
+    router: appRouter,
+    endpoint: '/api',
+    createContext: (_opts, c) => ({ authorization: c.req.header('Authorization') }),
+  }),
+);
+
+export default app;
+```
+
 ## Types
 
 #### GenerateOpenApiDocumentOptions
