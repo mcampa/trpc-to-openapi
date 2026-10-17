@@ -1,5 +1,9 @@
 ## Changelog
 
+- v3.3.1
+
+  - fix: raise the `h3` floor to `^1.15.11`, the first release that closes all five current advisories: request smuggling `GHSA-mp2g-9vg9-f4cg`, SSE injection `GHSA-22cc-p3c6-wpvm` and `GHSA-4hxc-9384-m385`, and the two `serveStatic` traversals `GHSA-wr4h-v87w-p3r7` / `GHSA-72gr-qfp7-vwhw`. The previous `^1.15.5` range allowed 1.15.11, but an existing lockfile stayed on the vulnerable releases; the raised floor forces the patched one.
+
 - v3.3.0
 
   - feat: add `contact` and `license` fields to `GenerateOpenApiDocumentOptions` [#157](https://github.com/mcampa/trpc-to-openapi/pull/157) by [@liorp](https://github.com/liorp)
