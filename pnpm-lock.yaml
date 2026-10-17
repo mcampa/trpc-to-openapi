@@ -15,7 +15,7 @@ importers:
         specifier: 6.2.0
         version: 6.2.0
       h3:
-        specifier: ^1.15.5
+        specifier: ^1.15.11
         version: 1.15.11
       openapi3-ts:
         specifier: 4.4.0
