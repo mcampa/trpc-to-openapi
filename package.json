@@ -46,7 +46,7 @@
   "dependencies": {
     "co-body": "6.2.0",
     "h3": "^1.15.11",
-    "openapi3-ts": "4.4.0"
+    "openapi3-ts": "4.6.2"
   },
   "devDependencies": {
     "@trpc/client": "^11.1.0",
@@ -81,5 +81,11 @@
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.6.1"
   },
-  "packageManager": "pnpm@10.18.1"
+  "packageManager": "pnpm@10.18.1",
+  "pnpm": {
+    "overrides": {
+      "qs": "6.16.1",
+      "yaml": "2.9.1"
+    }
+  }
 }

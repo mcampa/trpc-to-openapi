@@ -3,6 +3,8 @@
 - v3.3.1
 
   - fix: raise the `h3` floor to `^1.15.11`, the first release that closes all five current advisories: request smuggling `GHSA-mp2g-9vg9-f4cg`, SSE injection `GHSA-22cc-p3c6-wpvm` and `GHSA-4hxc-9384-m385`, and the two `serveStatic` traversals `GHSA-wr4h-v87w-p3r7` / `GHSA-72gr-qfp7-vwhw`. The previous `^1.15.5` range allowed 1.15.11, but an existing lockfile stayed on the vulnerable releases; the raised floor forces the patched one.
+  - fix: upgrade `openapi3-ts` to 4.6.2, which raises its `yaml` floor to `^2.9.1` (`GHSA-48c2-rrv3-qjmp`).
+  - chore: pin `qs` 6.16.1 and `yaml` 2.9.1 in the workspace so the remaining transitive advisories in the examples are patched too.
 
 - v3.3.0
 
