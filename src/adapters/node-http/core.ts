@@ -4,6 +4,7 @@ import {
   type NodeHTTPHandlerOptions,
   type NodeHTTPResponse,
 } from '@trpc/server/adapters/node-http';
+import type { CreateDocumentOptions } from 'zod-openapi';
 import { getErrorShape, TRPCRequestInfo } from '@trpc/server/unstable-core-do-not-import';
 import { ZodArray } from 'zod/v4';
 import type { ZodError } from 'zod/v4';
@@ -41,7 +42,13 @@ export type CreateOpenApiNodeHttpHandlerOptions<
 > = Pick<
   NodeHTTPHandlerOptions<TRouter, TRequest, TResponse>,
   'router' | 'createContext' | 'responseMeta' | 'onError' | 'maxBodySize'
->;
+> & {
+  /**
+   * Options forwarded to the non-production document validation, such as
+   * `override` for custom scalar schemas.
+   */
+  options?: CreateDocumentOptions;
+};
 
 export type OpenApiNextFunction = () => void;
 
@@ -56,7 +63,12 @@ export const createOpenApiNodeHttpHandler = <
 
   // Validate router
   if (process.env.NODE_ENV !== 'production') {
-    generateOpenApiDocument(router, { title: '', version: '', baseUrl: '' });
+    generateOpenApiDocument(router, {
+      title: '',
+      version: '',
+      baseUrl: '',
+      options: opts.options,
+    });
   }
 
   const { createContext, responseMeta, onError, maxBodySize } = opts;

@@ -3,6 +3,7 @@
 - v3.3.2
 
   - fix: forward `options` to `zod-openapi`'s `createDocument`. The field was dropped from `GenerateOpenApiDocumentOptions` in 3.3.0, so `options.override` (for example, a custom Decimal-to-number schema) was silently ignored and document generation threw on custom schemas. Restores the field and adds a regression test.
+  - fix: accept the same `options` in the Node HTTP adapters (standalone, express, fastify, koa, next) and forward them to the non-production router validation, so a router with a custom scalar schema can build the handler.
 
 - v3.3.1
 

@@ -39,6 +39,7 @@ const createHttpServerWithRouter = <TRouter extends OpenApiRouter>(
     responseMeta: handlerOpts.responseMeta ?? responseMetaMock,
     onError: handlerOpts.onError ?? onErrorMock,
     maxBodySize: handlerOpts.maxBodySize,
+    options: handlerOpts.options,
   } as any);
   const httpHandler = createHTTPHandler<TRouter>({
     router: handlerOpts.router,
@@ -89,6 +90,29 @@ describe('standalone adapter', () => {
         router: appRouter,
       });
     }).toThrowError('[query.invalidRoute] - Output parser expects a Zod validator');
+  });
+
+  // The non-production router validation generates a document; a custom
+  // schema needs the same `options.override` the application document uses.
+  test('accepts options for the non-production document validation', () => {
+    const appRouter = t.router({
+      custom: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/custom' } })
+        .input(z.void())
+        .output(z.object({ value: z.custom<{ v: number }>(() => true) }))
+        .query(() => ({ value: { v: 1 } })),
+    });
+
+    expect(() => {
+      createOpenApiHttpHandler({
+        router: appRouter,
+        options: {
+          override: ({ jsonSchema, zodSchema }) => {
+            if (zodSchema._zod.def.type === 'custom') jsonSchema.type = 'string';
+          },
+        },
+      });
+    }).not.toThrow();
   });
 
   test('with not found path', async () => {
