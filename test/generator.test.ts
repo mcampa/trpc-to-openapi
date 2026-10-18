@@ -3537,4 +3537,29 @@ describe('generator', () => {
 
     expect(() => generateOpenApiDocument(appRouter, defaultDocOpts)).not.toThrow();
   });
+
+  test('forwards options to createDocument', () => {
+    const appRouter = t.router({
+      custom: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/custom' } })
+        .input(z.void())
+        .output(z.object({ value: z.custom<{ v: number }>(() => true) }))
+        .query(() => ({ value: { v: 1 } })),
+    });
+
+    // Without the override this throws: `zod-openapi` cannot represent a
+    // custom schema. It only succeeds if `opts.options` reaches `createDocument`.
+    const document = generateOpenApiDocument(appRouter, {
+      ...defaultDocOpts,
+      options: {
+        override: ({ jsonSchema, zodSchema }) => {
+          if (zodSchema._zod.def.type === 'custom') {
+            jsonSchema.description = 'overridden-by-options';
+          }
+        },
+      },
+    });
+
+    expect(JSON.stringify(document)).toContain('overridden-by-options');
+  });
 });

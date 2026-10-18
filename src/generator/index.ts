@@ -1,4 +1,9 @@
-import { ZodOpenApiObject, ZodOpenApiPathsObject, createDocument } from 'zod-openapi';
+import {
+  ZodOpenApiObject,
+  ZodOpenApiPathsObject,
+  createDocument,
+  type CreateDocumentOptions,
+} from 'zod-openapi';
 import type { ZodSchema } from 'zod/v4';
 
 import {
@@ -55,6 +60,12 @@ export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>>
    *   }
    */
   defs?: Record<string, ZodSchema>;
+  /**
+   * Options forwarded to `zod-openapi`'s `createDocument`, such as `override`
+   * for custom scalar schemas. Optional: when omitted, the previous behavior
+   * is unchanged.
+   */
+  options?: CreateDocumentOptions;
 }
 
 export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
@@ -92,5 +103,5 @@ export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
     },
     tags: opts.tags?.map((tag) => ({ name: tag })),
     externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
-  });
+  }, opts.options);
 };
