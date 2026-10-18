@@ -1,5 +1,9 @@
 ## Changelog
 
+- v3.3.3
+
+  - fix: add `options` to `CreateOpenApiFetchHandlerOptions`. The fetch adapter already forwarded its options object to the node-http handler; only the type was missing, so a router with a custom scalar schema failed to typecheck when passing `options.override`.
+
 - v3.3.2
 
   - fix: forward `options` to `zod-openapi`'s `createDocument`. The field was dropped from `GenerateOpenApiDocumentOptions` in 3.3.0, so `options.override` (for example, a custom Decimal-to-number schema) was silently ignored and document generation threw on custom schemas. Restores the field and adds a regression test.
