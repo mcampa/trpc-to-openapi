@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { FetchHandlerOptions } from '@trpc/server/adapters/fetch';
 import { IncomingMessage, ServerResponse } from 'http';
+import type { CreateDocumentOptions } from 'zod-openapi';
 
 import { OpenApiRouter } from '../types';
 import { createOpenApiNodeHttpHandler } from './node-http';
@@ -11,6 +12,11 @@ export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Om
 > & {
   req: Request;
   endpoint: `/${string}`;
+  /**
+   * Options forwarded to the non-production document validation, such as
+   * `override` for custom scalar schemas.
+   */
+  options?: CreateDocumentOptions;
 };
 
 const getUrlEncodedBody = async (req: Request) => {

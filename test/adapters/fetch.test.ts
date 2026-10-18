@@ -33,6 +33,7 @@ const createFetchHandlerCaller = <TRouter extends OpenApiRouter>(
     responseMeta: handlerOpts.responseMeta ?? responseMetaMock,
     onError: handlerOpts.onError ?? onErrorMock,
     req: handlerOpts.req,
+    options: handlerOpts.options,
   } as CreateOpenApiFetchHandlerOptions<TRouter>);
   return openApiHttpHandler;
 };
@@ -68,6 +69,29 @@ describe('fetch adapter', () => {
       expect(error.code).toBe('INTERNAL_SERVER_ERROR');
       expect(error.message).toBe('[query.invalidRoute] - Output parser expects a Zod validator');
     }
+  });
+
+  test('accepts options for the non-production document validation', async () => {
+    const appRouter = t.router({
+      custom: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/custom' } })
+        .input(z.void())
+        .output(z.object({ value: z.custom<{ v: number }>(() => true) }))
+        .query(() => ({ value: { v: 1 } })),
+    });
+
+    const res = await createFetchHandlerCaller({
+      router: appRouter,
+      endpoint: '/',
+      req: new Request('https://localhost:3000/custom', { method: 'GET' }),
+      options: {
+        override: ({ jsonSchema, zodSchema }) => {
+          if (zodSchema._zod.def.type === 'custom') jsonSchema.type = 'string';
+        },
+      },
+    });
+
+    expect(res).toBeInstanceOf(Response);
   });
 
   test('with not found path', async () => {
