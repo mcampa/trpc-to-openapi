@@ -2507,6 +2507,55 @@ describe('generator', () => {
     `);
   });
 
+  test('with custom request headers and no input', () => {
+    const requestHeaders = z.object({
+      'x-api-key': z.string().meta({ description: 'API key.' }),
+    });
+
+    const appRouter = t.router({
+      noInput: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/no-input', requestHeaders } })
+        .output(z.object({ ok: z.boolean() }))
+        .query(() => ({ ok: true })),
+      voidInput: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/void-input', requestHeaders } })
+        .input(z.void())
+        .output(z.object({ ok: z.boolean() }))
+        .query(() => ({ ok: true })),
+    });
+
+    const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+
+    expect(openApiDocument.paths!['/no-input']!.get!.parameters).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "description": "API key.",
+          "in": "header",
+          "name": "x-api-key",
+          "required": true,
+          "schema": Object {
+            "description": "API key.",
+            "type": "string",
+          },
+        },
+      ]
+    `);
+    expect(openApiDocument.paths!['/void-input']!.get!.parameters).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "description": "API key.",
+          "in": "header",
+          "name": "x-api-key",
+          "required": true,
+          "schema": Object {
+            "description": "API key.",
+            "type": "string",
+          },
+        },
+      ]
+    `);
+  });
+
   test('with DELETE mutation', () => {
     const appRouter = t.router({
       deleteMutation: t.procedure

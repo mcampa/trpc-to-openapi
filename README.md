@@ -200,7 +200,7 @@ const body = await res.json(); /* { greeting: 'Hello Lily!' } */
 
 ### Custom headers
 
-Any custom headers can be specified in the `meta.openapi.requestHeaders` and `meta.openapi.responseHeaders` zod object schemas. These schemas are **documentation-only**: they are emitted into the generated OpenAPI document to describe the expected request and response headers, but they are not validated or enforced at runtime, and they do not make request headers available to the procedure.
+Any custom headers can be specified in the `meta.openapi.requestHeaders` and `meta.openapi.responseHeaders` zod object schemas. These schemas are **documentation-only**: they are emitted into the OpenAPI document, but they are not read, validated, or enforced at runtime, and they do not make request headers available to the procedure. `responseHeaders` documents the success (`200`) response only — error responses and custom `errorResponses` do not receive these headers.
 
 To validate headers or make them available to your procedures, use `createContext` or framework middleware. For authentication and authorization, see [Authorization](#authorization) for first-class OpenAPI security support.
 
@@ -215,6 +215,8 @@ Please see [error status codes here](src/adapters/node-http/errors.ts).
 ## Authorization
 
 To create protected endpoints, add `protect: true` to the `meta.openapi` object of each tRPC procedure. By default, you can then authenticate each request with the `createContext` function using the `Authorization` header with the `Bearer` scheme. If you wish to authenticate requests using a different/additional methods (such as custom headers, or cookies) this can be overwritten by specifying `securitySchemes` object.
+
+> **Adapter-specific request types:** the `createContext` example below receives the framework request, so headers are read with `req.headers['authorization']` (Express, Koa, Fastify, Next.js). With the standalone (`createOpenApiHttpHandler`) and fetch (`createOpenApiFetchHandler`) adapters, `req` is a Fetch [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request): use `req.headers.get('authorization')` instead, because `req.headers.authorization` is `undefined` at runtime.
 
 Explore a [complete example here](examples/with-nextjs/src/server/router.ts).
 
@@ -384,21 +386,21 @@ Please see [full typings here](src/generator/index.ts).
 
 Please see [full typings here](src/types.ts).
 
-| Property             | Type                                    | Description                                                                                                                    | Required | Default                 |
-| -------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
-| `enabled`            | `boolean`                               | Exposes this procedure to `trpc-to-openapi` adapters and on the OpenAPI document.                                              | `false`  | `true`                  |
-| `method`             | `HttpMethod`                            | HTTP method this endpoint is exposed on. Value can be `GET`, `POST`, `PATCH`, `PUT` or `DELETE`.                               | `true`   | `undefined`             |
-| `path`               | `string`                                | Pathname this endpoint is exposed on. Value must start with `/`, specify path parameters using `{}`.                           | `true`   | `undefined`             |
-| `protect`            | `boolean`                               | Requires this endpoint to use a security scheme.                                                                               | `false`  | `true`                  |
-| `summary`            | `string`                                | A short summary of the endpoint included in the OpenAPI document.                                                              | `false`  | `undefined`             |
-| `description`        | `string`                                | A verbose description of the endpoint included in the OpenAPI document.                                                        | `false`  | `undefined`             |
-| `tags`               | `string[]`                              | A list of tags used for logical grouping of endpoints in the OpenAPI document.                                                 | `false`  | `undefined`             |
-| `requestHeaders`     | `AnyZodObject`                          | A zod object schema describing custom request headers; documented in the OpenAPI document and not validated at runtime.        | `false`  | `undefined`             |
-| `responseHeaders`    | `AnyZodObject`                          | A zod object schema describing custom response headers; documented in the OpenAPI document and not validated at runtime.       | `false`  | `undefined`             |
-| `successDescription` | `string`                                | A string to use as the description for a successful response.                                                                  | `false`  | `'Successful response'` |
-| `errorResponses`     | `number[] \| { [key: number]: string }` | A list of error response codes or an object of response codes and their description to add to the responses for this endpoint. | `false`  | `undefined`             |
-| `contentTypes`       | `OpenApiContentType[]`                  | A set of content types specified as accepted in the OpenAPI document.                                                          | `false`  | `['application/json']`  |
-| `deprecated`         | `boolean`                               | Whether or not to mark an endpoint as deprecated                                                                               | `false`  | `false`                 |
+| Property             | Type                                    | Description                                                                                                                                                                                                         | Required | Default                 |
+| -------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------- |
+| `enabled`            | `boolean`                               | Exposes this procedure to `trpc-to-openapi` adapters and on the OpenAPI document.                                                                                                                                   | `false`  | `true`                  |
+| `method`             | `HttpMethod`                            | HTTP method this endpoint is exposed on. Value can be `GET`, `POST`, `PATCH`, `PUT` or `DELETE`.                                                                                                                    | `true`   | `undefined`             |
+| `path`               | `string`                                | Pathname this endpoint is exposed on. Value must start with `/`, specify path parameters using `{}`.                                                                                                                | `true`   | `undefined`             |
+| `protect`            | `boolean`                               | Requires this endpoint to use a security scheme.                                                                                                                                                                    | `false`  | `true`                  |
+| `summary`            | `string`                                | A short summary of the endpoint included in the OpenAPI document.                                                                                                                                                   | `false`  | `undefined`             |
+| `description`        | `string`                                | A verbose description of the endpoint included in the OpenAPI document.                                                                                                                                             | `false`  | `undefined`             |
+| `tags`               | `string[]`                              | A list of tags used for logical grouping of endpoints in the OpenAPI document.                                                                                                                                      | `false`  | `undefined`             |
+| `requestHeaders`     | `ZodObject`                             | A zod object schema describing custom request headers. Documentation-only: emitted into the OpenAPI document; not read, validated, or enforced at runtime (see [Custom headers](#custom-headers)).                  | `false`  | `undefined`             |
+| `responseHeaders`    | `ZodObject`                             | A zod object schema describing custom response headers. Documentation-only: emitted into the OpenAPI document; not read at runtime, and applies to the `200` response only (see [Custom headers](#custom-headers)). | `false`  | `undefined`             |
+| `successDescription` | `string`                                | A string to use as the description for a successful response.                                                                                                                                                       | `false`  | `'Successful response'` |
+| `errorResponses`     | `number[] \| { [key: number]: string }` | A list of error response codes or an object of response codes and their description to add to the responses for this endpoint.                                                                                      | `false`  | `undefined`             |
+| `contentTypes`       | `OpenApiContentType[]`                  | A set of content types specified as accepted in the OpenAPI document.                                                                                                                                               | `false`  | `['application/json']`  |
+| `deprecated`         | `boolean`                               | Whether or not to mark an endpoint as deprecated                                                                                                                                                                    | `false`  | `false`                 |
 
 #### CreateOpenApiNodeHttpHandlerOptions
 

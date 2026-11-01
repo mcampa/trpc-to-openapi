@@ -38,22 +38,24 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
      * A zod object schema describing headers expected on requests to this
      * endpoint.
      *
-     * This schema is documentation-only: it is emitted into the generated
-     * OpenAPI document to describe the expected headers. It is not read,
-     * validated, or enforced at runtime, and it does not make headers
-     * available to the procedure. Use `createContext` or framework middleware
-     * to validate headers and expose them to your procedures, and an OpenAPI
-     * security scheme for authentication/authorization.
+     * Documentation-only: emitted into the OpenAPI document; not read,
+     * validated, or enforced at runtime; not made available to procedures.
+     * Use `createContext` or framework middleware to validate headers and
+     * expose them to procedures, and an OpenAPI security scheme for
+     * authentication/authorization.
+     *
+     * See [Custom headers](https://github.com/mcampa/trpc-to-openapi#custom-headers).
      */
     requestHeaders?: ZodObject;
     /**
      * A zod object schema describing headers returned by this endpoint.
      *
-     * This schema is documentation-only: it is emitted into the generated
-     * OpenAPI document to describe the expected headers. It is not read,
-     * validated, or enforced at runtime. Set response headers yourself (e.g.
-     * via `responseMeta` or framework middleware), and use an OpenAPI
-     * security scheme for authentication/authorization.
+     * Documentation-only: emitted into the OpenAPI document; not read at
+     * runtime. Documents the success (200) response only — error responses
+     * and custom `errorResponses` do not receive these headers. Set response
+     * headers yourself (e.g. via `responseMeta` or framework middleware).
+     *
+     * See [Custom headers](https://github.com/mcampa/trpc-to-openapi#custom-headers).
      */
     responseHeaders?: ZodObject;
     successDescription?: string;

@@ -531,6 +531,28 @@ describe('standalone adapter', () => {
     expect(onErrorMock).toHaveBeenCalledTimes(0);
   });
 
+  test('with responseMeta using a Headers instance', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/echo' } })
+        .input(z.object({ payload: z.string() }))
+        .output(z.object({ payload: z.string() }))
+        .query(({ input }) => ({ payload: input.payload })),
+    });
+
+    const { url } = startHttpServerWithRouter({
+      router: appRouter,
+      responseMeta: () => ({ status: 202, headers: new Headers({ 'x-test': 'yes' }) }),
+    });
+
+    const res = await fetch(`${url}/echo?payload=Mario`, { method: 'GET' });
+
+    expect(res.status).toBe(202);
+    expect(res.headers.get('x-test')).toBe('yes');
+    expect(createContextMock).toHaveBeenCalledTimes(1);
+    expect(onErrorMock).toHaveBeenCalledTimes(0);
+  });
+
   test('with skipped transformer', async () => {
     const t2 = initTRPC.meta<OpenApiMeta>().context<any>().create({
       transformer: superjson,

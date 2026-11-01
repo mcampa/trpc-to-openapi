@@ -1,12 +1,13 @@
 import { TRPCError } from '@trpc/server';
 import { FetchHandlerOptions } from '@trpc/server/adapters/fetch';
+import type { NodeHTTPCreateContextFnOptions } from '@trpc/server/adapters/node-http';
 import { IncomingMessage, ServerResponse } from 'http';
 import type { CreateDocumentOptions } from 'zod-openapi';
 
 import { OpenApiRouter } from '../types';
 import { isJsonMediaType } from '../utils/method';
 import { stripPathPrefix } from '../utils/path';
-import { createOpenApiNodeHttpHandler } from './node-http';
+import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
 import { DEFAULT_MAX_BODY_SIZE, payloadTooLargeError } from './node-http/input';
 
 export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Omit<
@@ -234,8 +235,30 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
     );
   }
 
-  // @ts-expect-error FIXME
-  const openApiHttpHandler = createOpenApiNodeHttpHandler(opts);
+  const { router, createContext, responseMeta, onError, options } = opts;
+
+  const openApiHttpHandler = createOpenApiNodeHttpHandler<TRouter, IncomingMessage, ServerResponse>(
+    {
+      router,
+      responseMeta,
+      onError,
+      options,
+      // The fetch adapter's `createContext` contract is tRPC's fetch one
+      // (`{ req, resHeaders, info }`), while the node handler passes a node
+      // request and response. Adapt between the two so `resHeaders` is defined.
+      createContext: createContext
+        ? ({
+            req: contextReq,
+            info,
+          }: NodeHTTPCreateContextFnOptions<IncomingMessage, ServerResponse>) =>
+            createContext({
+              req: contextReq as unknown as Request,
+              resHeaders,
+              info,
+            })
+        : undefined,
+    } as unknown as CreateOpenApiNodeHttpHandlerOptions<TRouter, IncomingMessage, ServerResponse>,
+  );
 
   return new Promise<Response>((resolve) => {
     let settled = false;
