@@ -1,5 +1,10 @@
 ## Changelog
 
+- v3.5.0
+
+  - feat: add a Hono adapter (`createOpenApiHonoHandler`). It is a thin wrapper over the fetch adapter: it takes the native `Request` from `c.req.raw`, passes the Hono `Context` to `createContext`, and defaults `endpoint` to `/` ([#165](https://github.com/mcampa/trpc-to-openapi/pull/165)) by [@VikalpP](https://github.com/VikalpP). Closes [#147](https://github.com/mcampa/trpc-to-openapi/issues/147).
+  - chore: bump `swagger-ui-express` in the Express example to 5.0.1 ([#134](https://github.com/mcampa/trpc-to-openapi/pull/134)).
+
 - v3.4.0
 
   - fix: harden query/path input coercion and prototype safety ([#177](https://github.com/mcampa/trpc-to-openapi/pull/177), building on [#173](https://github.com/mcampa/trpc-to-openapi/pull/173) by [@akremer68](https://github.com/akremer68)). Boolean query/path parameters now accept only `"true"` and `"false"` (`"false"`, `"0"`, `"no"` and `"off"` previously became `true`), and number, bigint and date coercion follows strict query/path rules; JSON body strings keep their previous numeric/date coercion. Coercion no longer mutates the router's schemas, recursive schemas no longer overflow the stack, `__proto__` input keys are dropped instead of changing a prototype, optional fields named `toString`/`constructor` work again, and malformed JSON bodies return 400 instead of 500. BigInt responses serialize as decimal strings and the generated schema describes them as strings.
