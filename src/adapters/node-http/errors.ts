@@ -71,9 +71,12 @@ export const TRPC_ERROR_CODE_MESSAGE: Record<TRPCError['code'], string> = {
   PRECONDITION_REQUIRED: 'Precondition required',
 };
 
+const isTRPCError = (cause: unknown): cause is TRPCError =>
+  cause instanceof Error && cause.name === 'TRPCError';
+
 export function getErrorFromUnknown(cause: unknown): TRPCError {
-  if (cause instanceof Error && cause.name === 'TRPCError') {
-    return cause as TRPCError;
+  if (isTRPCError(cause)) {
+    return cause;
   }
 
   let errorCause: Error | undefined = undefined;

@@ -1,5 +1,5 @@
 import { incomingMessageToRequest, NodeHTTPResponse } from '@trpc/server/adapters/node-http';
-import { NodeHTTPRequest, OpenApiMethod } from '../types';
+import { OpenApiHTTPRequest, OpenApiMethod } from '../types';
 
 export const acceptsRequestBody = (method: OpenApiMethod | 'HEAD') => {
   if (method === 'GET' || method === 'DELETE') {
@@ -8,7 +8,7 @@ export const acceptsRequestBody = (method: OpenApiMethod | 'HEAD') => {
   return true;
 };
 
-export const getContentType = (req: NodeHTTPRequest | Request): string | undefined => {
+export const getContentType = (req: OpenApiHTTPRequest): string | undefined => {
   if (req instanceof Request) {
     return req.headers.get('content-type') ?? undefined;
   }
@@ -46,7 +46,7 @@ export const isJsonMediaType = (contentType: string | string[] | undefined): boo
 };
 
 export const getRequestSignal = (
-  req: NodeHTTPRequest | Request,
+  req: OpenApiHTTPRequest,
   res: NodeHTTPResponse,
   maxBodySize?: number,
 ) => {

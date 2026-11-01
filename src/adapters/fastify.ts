@@ -1,9 +1,10 @@
 import { AnyRouter } from '@trpc/server';
+import type { NodeHTTPResponse } from '@trpc/server/adapters/node-http';
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Socket } from 'net';
 
-import { OpenApiRouter } from '../types';
+import { NodeHTTPRequest, OpenApiRouter } from '../types';
 import { stripPathPrefix } from '../utils/path';
 import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
 
@@ -31,7 +32,7 @@ interface FastifyReplyWithNodeMethods extends FastifyReply {
 }
 
 export type CreateOpenApiFastifyPluginOptions<TRouter extends OpenApiRouter> =
-  CreateOpenApiNodeHttpHandlerOptions<TRouter, any, any> & {
+  CreateOpenApiNodeHttpHandlerOptions<TRouter, NodeHTTPRequest, NodeHTTPResponse> & {
     basePath?: `/${string}`;
   };
 
@@ -113,7 +114,12 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
       replyWithNodeMethods.emit = reply.raw.emit.bind(reply.raw);
       replyWithNodeMethods.removeListener = reply.raw.removeListener.bind(reply.raw);
 
-      return await openApiHttpHandler(requestWithNodeMethods, replyWithNodeMethods);
+      // Fastify's request/reply are adapted to the Node interfaces above; the
+      // augmented objects carry the methods the handler reads at runtime.
+      return await openApiHttpHandler(
+        requestWithNodeMethods as unknown as NodeHTTPRequest,
+        replyWithNodeMethods as unknown as NodeHTTPResponse,
+      );
     },
   });
 

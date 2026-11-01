@@ -4,6 +4,7 @@ import {
   createDocument,
   type CreateDocumentOptions,
 } from 'zod-openapi';
+import type { ContactObject, LicenseObject } from 'openapi3-ts/oas31';
 import type { ZodSchema } from 'zod/v4';
 
 import {
@@ -14,19 +15,9 @@ import {
 } from '../types';
 import { getOpenApiPathsObject, mergePaths } from './paths';
 
-export interface OpenApiContactObject {
-  [key: `x-${string}`]: any;
-  name?: string;
-  url?: string;
-  email?: string;
-}
+export type OpenApiContactObject = ContactObject;
 
-export interface OpenApiLicenseObject {
-  [key: `x-${string}`]: any;
-  name: string;
-  identifier?: string;
-  url?: string;
-}
+export type OpenApiLicenseObject = LicenseObject;
 
 export interface GenerateOpenApiDocumentOptions<TMeta = Record<string, unknown>> {
   title: string;

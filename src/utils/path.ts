@@ -97,9 +97,7 @@ export const getPathRegExp = (path: string): PathRegExp => {
     regexpSource += '([^/]+)';
   }
 
-  const regexp = new RegExp(`^${regexpSource}$`, 'i') as PathRegExp;
-  regexp.paramNames = paramNames;
-  return regexp;
+  return Object.assign(new RegExp(`^${regexpSource}$`, 'i'), { paramNames });
 };
 
 const UNRESERVED_CHARACTER = /^[A-Za-z0-9\-._~]$/;

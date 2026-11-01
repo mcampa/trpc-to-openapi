@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod/v4';
-import type { ZodObject, ZodAny } from 'zod/v4';
+import type { ZodObject } from 'zod/v4';
 import {
   ZodOpenApiContentObject,
   ZodOpenApiParameters,
@@ -46,8 +46,7 @@ export const getParameterObjects = (
     }
   }
 
-  // @ts-expect-error fix later
-  const { path, query } = shapeKeys
+  const parameterObjects = shapeKeys
     .filter((shapeKey) => {
       const isPathParameter = pathParameters.includes(shapeKey);
       if (inType === 'path') {
@@ -58,8 +57,16 @@ export const getParameterObjects = (
       return true;
     })
     .map((shapeKey) => {
-      let shapeSchema = shape[shapeKey]!;
-      const isShapeRequired = !(shapeSchema as z.ZodType).safeParse(undefined).success;
+      const rawShapeSchema = shape[shapeKey]!;
+      if (!instanceofZodType(rawShapeSchema)) {
+        throw new TRPCError({
+          message: `Input parser key: "${shapeKey}" must be a Zod schema`,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+
+      let shapeSchema: z.ZodType = rawShapeSchema;
+      const isShapeRequired = !shapeSchema.safeParse(undefined).success;
       const isPathParameter = pathParameters.includes(shapeKey);
 
       if (!instanceofZodTypeLikeString(shapeSchema)) {
@@ -85,30 +92,36 @@ export const getParameterObjects = (
             code: 'INTERNAL_SERVER_ERROR',
           });
         }
-        shapeSchema = shapeSchema.unwrap();
+        const innerShapeSchema = shapeSchema.unwrap();
+        if (!instanceofZodType(innerShapeSchema)) {
+          throw new TRPCError({
+            message: `Input parser key: "${shapeKey}" must be a Zod schema`,
+            code: 'INTERNAL_SERVER_ERROR',
+          });
+        }
+        shapeSchema = innerShapeSchema;
       }
 
       return {
         name: shapeKey,
-        paramType: isPathParameter ? 'path' : 'query',
+        paramType: isPathParameter ? ('path' as const) : ('query' as const),
         required: isPathParameter || (required && isShapeRequired),
         schema: shapeSchema,
       };
-    })
-    .reduce(
-      ({ path, query }, { name, paramType, schema, required }) =>
-        // @ts-expect-error fix later
-        paramType === 'path'
-          ? {
-              path: { ...path, [name]: required ? schema : (schema as z.ZodType).optional() },
-              query,
-            }
-          : {
-              path,
-              query: { ...query, [name]: required ? schema : (schema as z.ZodType).optional() },
-            },
-      { path: {} as Record<string, ZodAny>, query: {} as Record<string, ZodAny> },
-    );
+    });
+
+  const { path, query } = parameterObjects.reduce<{
+    path: z.ZodRawShape;
+    query: z.ZodRawShape;
+  }>(
+    (acc, { name, paramType, schema, required }) => {
+      const parameterSchema = required ? schema : schema.optional();
+      return paramType === 'path'
+        ? { path: { ...acc.path, [name]: parameterSchema }, query: acc.query }
+        : { path: acc.path, query: { ...acc.query, [name]: parameterSchema } };
+    },
+    { path: {}, query: {} },
+  );
 
   let res: ZodOpenApiParameters = {};
 
@@ -145,9 +158,16 @@ export const getRequestBodyObject = (
     // Zod 4 throws on .omit() for schemas with refinements - rebuild from shape
     const filteredShape: Record<string, z.ZodType> = {};
     for (const [key, value] of Object.entries(schema.shape)) {
-      if (!mask[key]) {
-        filteredShape[key] = value as z.ZodType;
+      if (mask[key]) {
+        continue;
       }
+      if (!instanceofZodType(value)) {
+        throw new TRPCError({
+          message: `Input parser key: "${key}" must be a Zod schema`,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+      filteredShape[key] = value;
     }
     dedupedSchema = z.object(filteredShape);
   }
@@ -235,7 +255,7 @@ export const errorResponseFromMessage = (status: number, message: string) =>
   errorResponseObject(HTTP_STATUS_TRPC_ERROR_CODE[status], message);
 
 export const getResponsesObject = (
-  schema: ZodObject,
+  schema: z.ZodType,
   httpMethod: HttpMethods,
   headers: ZodObject | undefined,
   isProtected: boolean,

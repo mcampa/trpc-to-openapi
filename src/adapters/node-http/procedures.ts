@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { OpenApiMethod, OpenApiProcedure, OpenApiRouter } from '../../types';
 import {
+  createNullPrototypeRecord,
   decodePathParameter,
   decodeUnreservedPathEscapes,
   forEachOpenApiProcedure,
@@ -162,7 +163,7 @@ export const createProcedureCache = (router: OpenApiRouter): ProcedureMatcher =>
       // Matching happened on the raw pathname, so encoded slashes stay inside
       // a single segment and are decoded only after routing. A null prototype
       // preserves arbitrary parameter names such as `__proto__`.
-      const pathInput: Record<string, string> = Object.create(null) as Record<string, string>;
+      const pathInput = createNullPrototypeRecord<string>();
       entry.paramNames.forEach((name, index) => {
         try {
           pathInput[name] = decodePathParameter(match[index + 1] ?? '');
