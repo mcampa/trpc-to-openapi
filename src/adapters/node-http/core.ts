@@ -37,7 +37,7 @@ import {
 } from '../../utils';
 import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
 import { getBody, getQuery } from './input';
-import { createProcedureCache } from './procedures';
+import { createProcedureCache, type ProcedureCacheEntry } from './procedures';
 
 export type CreateOpenApiNodeHttpHandlerOptions<
   TRouter extends OpenApiRouter,
@@ -94,7 +94,9 @@ export const createOpenApiNodeHttpHandler = <
   }
 
   const { createContext, responseMeta, onError, maxBodySize } = opts;
-  const getProcedure = createProcedureCache(router);
+  // The cache is memoized on the original router so creating a handler per
+  // request (as the fetch adapter does) does not rebuild it.
+  const getProcedure = createProcedureCache(opts.router);
 
   return async (req: TRequest, res: TResponse, next?: OpenApiNextFunction) => {
     const sendResponse = (statusCode: number, headers: HTTPHeaders, body: OpenApiResponse) => {
@@ -117,9 +119,13 @@ export const createOpenApiNodeHttpHandler = <
     let info: TRPCRequestInfo | undefined = undefined;
     let data: any = undefined;
 
-    const { procedure, pathInput } = getProcedure(method, path) ?? {};
+    let procedure: ProcedureCacheEntry | undefined;
 
     try {
+      const resolved = getProcedure(method, path);
+      procedure = resolved?.procedure;
+      const pathInput = resolved?.pathInput ?? {};
+
       if (!procedure) {
         if (next) {
           return next();
