@@ -566,6 +566,60 @@ describe('fetch adapter', () => {
     expect(onErrorMock).toHaveBeenCalledTimes(0);
   });
 
+  test('with responseMeta using a Headers instance', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/echo' } })
+        .input(z.object({ payload: z.string() }))
+        .output(z.object({ payload: z.string() }))
+        .query(({ input }) => ({ payload: input.payload })),
+    });
+
+    const req = new Request('https://localhost:3000/echo?payload=mcampa', {
+      method: 'GET',
+    });
+    const res = await createFetchHandlerCaller({
+      router: appRouter,
+      endpoint: '/',
+      req,
+      responseMeta: () => ({ status: 202, headers: new Headers({ 'x-test': 'yes' }) }),
+    });
+
+    expect(res.status).toBe(202);
+    expect(res.headers.get('x-test')).toBe('yes');
+    expect(createContextMock).toHaveBeenCalledTimes(1);
+    expect(onErrorMock).toHaveBeenCalledTimes(0);
+  });
+
+  test('with createContext resHeaders', async () => {
+    const appRouter = t.router({
+      ping: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/ping' } })
+        .input(z.void())
+        .output(z.literal('pong'))
+        .query(() => 'pong' as const),
+    });
+
+    const req = new Request('https://localhost:3000/ping', {
+      method: 'GET',
+    });
+    const res = await createFetchHandlerCaller({
+      router: appRouter,
+      endpoint: '/',
+      req,
+      createContext: ({ resHeaders }) => {
+        expect(resHeaders).toBeInstanceOf(Headers);
+        resHeaders.set('x-test', 'yes');
+        return {};
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-test')).toBe('yes');
+    expect(await res.json()).toEqual('pong');
+    expect(onErrorMock).toHaveBeenCalledTimes(0);
+  });
+
   test('with skipped transformer', async () => {
     const t2 = initTRPC.meta<OpenApiMeta>().context().create({
       transformer: superjson,

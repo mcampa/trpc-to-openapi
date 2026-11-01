@@ -157,6 +157,12 @@ export const getOpenApiPathsObject = <TMeta = Record<string, unknown>>(
         }
       }
 
+      // `requestHeaders` describes the endpoint independently of its input, so
+      // it must still be emitted when there is no input or the input is void.
+      if (requestHeaders && !requestData.requestParams) {
+        requestData.requestParams = { header: requestHeaders };
+      }
+
       const responses = getResponsesObject(
         outputParser,
         httpMethod,
