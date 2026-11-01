@@ -17,27 +17,32 @@ export const getContentType = (req: NodeHTTPRequest | Request): string | undefin
 };
 
 /**
- * Normalizes a content-type header to its media type: lowercased, without
- * parameters and surrounding whitespace. `Application/JSON; charset=utf-8`
- * becomes `application/json`.
+ * Parse a `Content-Type` header into a lowercase media type without its
+ * parameters. Multiple header values are joined with a comma so a header that
+ * contains several media types is never mistaken for a single one.
  */
 export const normalizeMediaType = (
   contentType: string | string[] | undefined,
 ): string | undefined => {
-  const value = Array.isArray(contentType) ? contentType[0] : contentType;
+  const value = Array.isArray(contentType) ? contentType.join(',') : contentType;
   if (!value) {
     return undefined;
   }
 
-  return value.split(';')[0]!.trim().toLowerCase();
+  const [mediaType] = value.split(';');
+  const normalized = mediaType?.trim().toLowerCase();
+
+  return normalized ? normalized : undefined;
 };
 
 /**
- * Whether a normalized media type is JSON: `application/json` or a structured
- * suffix type such as `application/json-patch+json`.
+ * Whether the header describes JSON: the media type is exactly
+ * `application/json` or uses a `+json` structured suffix.
  */
-export const isJsonMediaType = (mediaType: string | undefined): boolean => {
-  return mediaType === 'application/json' || !!mediaType?.endsWith('+json');
+export const isJsonMediaType = (contentType: string | string[] | undefined): boolean => {
+  const mediaType = normalizeMediaType(contentType);
+
+  return mediaType === 'application/json' || mediaType?.endsWith('+json') === true;
 };
 
 export const getRequestSignal = (

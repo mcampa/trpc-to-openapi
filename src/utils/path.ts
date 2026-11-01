@@ -36,6 +36,32 @@ export const tokenizePath = (path: string): PathToken[] => {
   return tokens;
 };
 
+/**
+ * Strip `prefix` from `pathname` only when it matches whole leading path
+ * segments, so `/api` is not stripped from `/api-docs` or from a hostname.
+ */
+export const stripPathPrefix = (pathname: string, prefix: string | undefined): string => {
+  if (!prefix) {
+    return pathname;
+  }
+
+  const normalizedPrefix = prefix.replace(/\/+$/, '');
+
+  if (normalizedPrefix === '') {
+    return pathname;
+  }
+
+  if (pathname === normalizedPrefix) {
+    return '/';
+  }
+
+  if (pathname.startsWith(`${normalizedPrefix}/`)) {
+    return pathname.slice(normalizedPrefix.length);
+  }
+
+  return pathname;
+};
+
 export const getPathParameters = (path: string): string[] => {
   return tokenizePath(path).flatMap((token) => (token.type === 'parameter' ? [token.name] : []));
 };

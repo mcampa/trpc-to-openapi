@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import parse from 'co-body';
 import { NodeHTTPRequest } from '../../types';
-import { normalizeMediaType } from '../../utils/method';
+import { isJsonMediaType } from '../../utils/method';
 
 export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string | string[]> => {
   // Null-prototype accumulators keep keys such as "__proto__" as own
@@ -32,8 +32,23 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string 
   return query;
 };
 
-const BODY_100_KB = 100_000;
-export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): Promise<any> => {
+/**
+ * Default maximum request body size in bytes (100kb), shared by the node HTTP
+ * and fetch adapters.
+ */
+export const DEFAULT_MAX_BODY_SIZE = 100_000;
+
+export const payloadTooLargeError = (cause?: unknown) =>
+  new TRPCError({
+    message: 'Request body too large',
+    code: 'PAYLOAD_TOO_LARGE',
+    cause,
+  });
+
+export const getBody = async (
+  req: NodeHTTPRequest,
+  maxBodySize = DEFAULT_MAX_BODY_SIZE,
+): Promise<any> => {
   if ('body' in req) {
     if (req.body instanceof ReadableStream) {
       try {
@@ -58,8 +73,8 @@ export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): 
 
   req.body = undefined;
 
-  const mediaType = normalizeMediaType(req.headers['content-type']);
-  if (mediaType === 'application/json' || mediaType === 'application/x-www-form-urlencoded') {
+  const contentType = req.headers['content-type'];
+  if (isJsonMediaType(contentType)) {
     try {
       const { raw, parsed } = await parse(req, {
         limit: maxBodySize,
@@ -69,11 +84,7 @@ export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): 
       req.body = raw ? parsed : undefined;
     } catch (cause) {
       if (cause instanceof Error && cause.name === 'PayloadTooLargeError') {
-        throw new TRPCError({
-          message: 'Request body too large',
-          code: 'PAYLOAD_TOO_LARGE',
-          cause: cause,
-        });
+        throw payloadTooLargeError(cause);
       }
 
       let errorCause: Error | undefined = undefined;

@@ -209,6 +209,36 @@ describe('standalone adapter', () => {
     expect(onErrorMock).toHaveBeenCalledTimes(1);
   });
 
+  test.each(['Application/JSON', 'application/json; charset=utf-8', 'application/json-patch+json'])(
+    'with the JSON content type %s',
+    async (contentType) => {
+      const appRouter = t.router({
+        echo: t.procedure
+          .meta({ openapi: { method: 'POST', path: '/echo' } })
+          .input(z.object({ payload: z.string() }))
+          .output(z.object({ payload: z.string() }))
+          .mutation(({ input }) => ({ payload: input.payload })),
+      });
+
+      const { url } = startHttpServerWithRouter({
+        router: appRouter,
+      });
+
+      const res = await fetch(`${url}/echo`, {
+        method: 'POST',
+        headers: { 'Content-Type': contentType },
+        body: JSON.stringify({ payload: 'Lily' }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ payload: 'Lily' });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+    },
+  );
+
   test('with missing input', async () => {
     const appRouter = t.router({
       echo: t.procedure

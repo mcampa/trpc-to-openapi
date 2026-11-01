@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import type { Socket } from 'net';
 
 import { OpenApiRouter } from '../types';
+import { stripPathPrefix } from '../utils/path';
 import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
 
 interface FastifyRequestWithNodeMethods extends FastifyRequest {
@@ -52,8 +53,16 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
     method: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     url: `${prefix}/*`,
     handler: async (request, reply) => {
-      const prefixRemovedFromUrl = request.url.replace(fastify.prefix, '').replace(prefix, '');
-      request.raw.url = prefixRemovedFromUrl;
+      // Parse the request target instead of replacing substrings on the raw
+      // URL: an absolute-form target (RFC 7230 §5.3.2) such as
+      // `https://api.example.com/api/echo` must not have its host mangled.
+      const requestUrl = new URL(request.url, 'http://localhost');
+      const pathname = stripPathPrefix(
+        stripPathPrefix(requestUrl.pathname, fastify.prefix),
+        prefix,
+      );
+
+      request.raw.url = `${pathname}${requestUrl.search}`;
 
       // Add Node.js request methods to Fastify request
       const requestWithNodeMethods = request as FastifyRequestWithNodeMethods;

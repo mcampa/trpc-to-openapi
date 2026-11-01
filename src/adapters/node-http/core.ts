@@ -32,7 +32,6 @@ import {
   getContentType,
   getRequestSignal,
   isJsonMediaType,
-  normalizeMediaType,
   sanitizeInput,
 } from '../../utils';
 import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
@@ -144,10 +143,9 @@ export const createOpenApiNodeHttpHandler = <
       }
 
       const contentType = getContentType(req);
-      const mediaType = normalizeMediaType(contentType);
       const useBody = acceptsRequestBody(method);
 
-      if (useBody && !isJsonMediaType(mediaType)) {
+      if (useBody && !isJsonMediaType(contentType)) {
         throw new TRPCError({
           code: 'UNSUPPORTED_MEDIA_TYPE',
           message: contentType

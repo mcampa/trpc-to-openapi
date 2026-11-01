@@ -1,5 +1,6 @@
 import { initTRPC } from '@trpc/server';
 import fastify from 'fastify';
+import { request as httpRequest } from 'http';
 import fetch from 'node-fetch';
 import { z } from 'zod/v4';
 
@@ -53,6 +54,38 @@ const createFastifyServerWithRouter = async <TRouter extends OpenApiRouter>(
     close: () => server.close(),
   };
 };
+
+/**
+ * Send a request with an absolute-form request target (RFC 7230 §5.3.2), which
+ * Fastify accepts and which the handler must route without mangling the host.
+ */
+const sendAbsoluteFormRequest = (serverUrl: string, requestTarget: string) =>
+  new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const { hostname, port } = new URL(serverUrl);
+
+    const req = httpRequest(
+      {
+        // `URL.hostname` keeps the brackets around IPv6 literals.
+        hostname: hostname.replace(/^\[|\]$/g, ''),
+        port,
+        method: 'GET',
+        path: requestTarget,
+        headers: { host: new URL(requestTarget).host },
+      },
+      (res) => {
+        let body = '';
+
+        res.setEncoding('utf8');
+        res.on('data', (chunk: string) => {
+          body += chunk;
+        });
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body }));
+      },
+    );
+
+    req.on('error', reject);
+    req.end();
+  });
 
 const t = initTRPC.meta<OpenApiMeta>().context<any>().create();
 
@@ -182,6 +215,38 @@ describe('fastify adapter', () => {
     expect(onErrorMock).toHaveBeenCalledTimes(0);
 
     await close();
+  });
+
+  test('with basePath and an absolute-form target whose host contains the prefix', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/echo' } })
+        .input(z.object({ payload: z.string() }))
+        .output(z.object({ payload: z.string() }))
+        .query(({ input }) => ({ payload: input.payload })),
+    });
+
+    const { url, close } = await createFastifyServerWithRouter(
+      { router: appRouter },
+      { serverOpts: { basePath: '/api' } },
+    );
+
+    try {
+      // The host `api.example.com` contains `/api` right after the scheme
+      // separator; replacing it verbatim used to mangle the URL.
+      const { status, body } = await sendAbsoluteFormRequest(
+        url,
+        'https://api.example.com/api/echo?payload=mcampa',
+      );
+
+      expect(status).toBe(200);
+      expect(JSON.parse(body)).toEqual({ payload: 'mcampa' });
+      expect(createContextMock).toHaveBeenCalledTimes(1);
+      expect(responseMetaMock).toHaveBeenCalledTimes(1);
+      expect(onErrorMock).toHaveBeenCalledTimes(0);
+    } finally {
+      await close();
+    }
   });
 
   test('with single value for optional array field in query params', async () => {
