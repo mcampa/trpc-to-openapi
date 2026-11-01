@@ -16,6 +16,22 @@ export const getContentType = (req: NodeHTTPRequest | Request): string | undefin
   return req.headers['content-type'] ?? undefined;
 };
 
+/**
+ * Normalizes a content-type header to its media type: lowercased, without
+ * parameters and surrounding whitespace. `Application/JSON; charset=utf-8`
+ * becomes `application/json`.
+ */
+export const normalizeMediaType = (
+  contentType: string | string[] | undefined,
+): string | undefined => {
+  const value = Array.isArray(contentType) ? contentType[0] : contentType;
+  if (!value) {
+    return undefined;
+  }
+
+  return value.split(';')[0]!.trim().toLowerCase();
+};
+
 export const getRequestSignal = (
   req: NodeHTTPRequest | Request,
   res: NodeHTTPResponse,

@@ -1,17 +1,20 @@
 import { TRPCError } from '@trpc/server';
 import parse from 'co-body';
 import { NodeHTTPRequest } from '../../types';
+import { normalizeMediaType } from '../../utils/method';
 
 export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string | string[]> => {
-  const query: Record<string, string | string[]> = {};
+  // Null-prototype accumulators keep keys such as "__proto__" as own
+  // properties instead of triggering the prototype setter.
+  const query: Record<string, string | string[]> = Object.create(null);
 
   if (!req.query) {
-    const parsedQs: Record<string, string[]> = {};
+    const parsedQs: Record<string, string[]> = Object.create(null);
     url.searchParams.forEach((value, key) => {
-      if (!parsedQs[key]) {
+      if (!Object.prototype.hasOwnProperty.call(parsedQs, key)) {
         parsedQs[key] = [];
       }
-      parsedQs[key].push(value);
+      parsedQs[key]!.push(value);
     });
     req.query = parsedQs;
   }
@@ -20,8 +23,12 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string 
 
   // normalize first value in array
   Object.keys(reqQuery).forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(reqQuery, key)) {
+      return;
+    }
+
     const value = reqQuery[key];
-    if (value) {
+    if (value !== undefined) {
       query[key] = Array.isArray(value) && value.length === 1 ? value[0]! : value;
     }
   });
@@ -40,8 +47,8 @@ export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): 
 
   req.body = undefined;
 
-  const contentType = req.headers['content-type'];
-  if (contentType === 'application/json' || contentType === 'application/x-www-form-urlencoded') {
+  const mediaType = normalizeMediaType(req.headers['content-type']);
+  if (mediaType === 'application/json' || mediaType === 'application/x-www-form-urlencoded') {
     try {
       const { raw, parsed } = await parse(req, {
         limit: maxBodySize,

@@ -31,6 +31,7 @@ import {
   zodSupportsCoerce,
   getContentType,
   getRequestSignal,
+  normalizeMediaType,
 } from '../../utils';
 import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
 import { getBody, getQuery } from './input';
@@ -52,6 +53,9 @@ export type CreateOpenApiNodeHttpHandlerOptions<
 };
 
 export type OpenApiNextFunction = () => void;
+
+const jsonStringify = (body: unknown): string =>
+  JSON.stringify(body, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
 
 export const createOpenApiNodeHttpHandler = <
   TRouter extends OpenApiRouter,
@@ -84,7 +88,7 @@ export const createOpenApiNodeHttpHandler = <
           res.setHeader(key, value as string);
         }
       }
-      res.end(JSON.stringify(body));
+      res.end(jsonStringify(body));
     };
 
     const method = req.method as OpenApiMethod | 'HEAD';
@@ -117,9 +121,10 @@ export const createOpenApiNodeHttpHandler = <
       }
 
       const contentType = getContentType(req);
+      const mediaType = normalizeMediaType(contentType);
       const useBody = acceptsRequestBody(method);
 
-      if (useBody && !contentType?.startsWith('application/json')) {
+      if (useBody && mediaType !== 'application/json') {
         throw new TRPCError({
           code: 'UNSUPPORTED_MEDIA_TYPE',
           message: contentType
@@ -133,10 +138,13 @@ export const createOpenApiNodeHttpHandler = <
 
       // input should stay undefined if z.void()
       if (!instanceofZodTypeLikeVoid(unwrappedSchema)) {
-        input = {
-          ...(useBody ? await getBody(req, maxBodySize) : getQuery(req, url)),
-          ...pathInput,
-        };
+        // Use a null-prototype object so keys such as "__proto__" coming from
+        // a pre-parsed body or query string stay own properties.
+        input = Object.assign(
+          Object.create(null),
+          useBody ? await getBody(req, maxBodySize) : getQuery(req, url),
+          pathInput,
+        );
       }
 
       // if supported, coerce all string values to correct types
@@ -163,7 +171,12 @@ export const createOpenApiNodeHttpHandler = <
               }
             }
 
-            if (isArray && input[key] !== undefined && !Array.isArray(input[key])) {
+            if (
+              isArray &&
+              Object.prototype.hasOwnProperty.call(input, key) &&
+              input[key] !== undefined &&
+              !Array.isArray(input[key])
+            ) {
               input[key] = [input[key]];
             }
           }

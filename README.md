@@ -144,7 +144,13 @@ A procedure can accept a set of inputs via URL path parameters. You can add a pa
 
 ### Query parameters
 
-Query & path parameter inputs are always accepted as a `string`. This library converts string values to the following primitive types out of the box: `number`, `boolean` (from `"true"` or `"false"` only), `bigint` and `date`. Empty strings, and values like `null` or `true` in a JSON body, are left for your schema to validate; use [`z.coerce`](https://github.com/colinhacks/zod#coercion-for-primitives) if you want zod's own coercion instead. If you wish to support others such as `object`, `array` etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
+Query & path parameter inputs are always accepted as a `string`. This library converts string values to the following primitive types out of the box: `number`, `boolean` (from `"true"` or `"false"` only), `bigint` and `date`. Conversion is strict: a value that does not match the rules below is left as a string, so zod rejects it with a `400` response instead of silently coercing it.
+
+- `number`: strict decimal strings only — an optional sign, digits with an optional fraction (`.5` and `5.` are valid) and an optional exponent (`1e3`). Hexadecimal (`0x10`), whitespace-only, `Infinity`, `NaN` and empty strings are rejected.
+- `bigint`: strict integer strings (an optional sign followed by digits). A JSON integer is converted when it is a safe integer, because the OpenAPI document describes a bigint as an integer.
+- `date`: the string is converted only when it is a valid date.
+
+Empty strings, and values like `null` or `true` in a JSON body, are left for your schema to validate; use [`z.coerce`](https://github.com/colinhacks/zod#coercion-for-primitives) if you want zod's own coercion instead. If you wish to support others such as `object`, `array` etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
 
 Conversion happens before your input schema runs, so in a top-level `.pipe()` or `z.preprocess()`, a later step that needs a string converted should use `z.coerce`.
 
