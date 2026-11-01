@@ -96,9 +96,19 @@ export const createOpenApiNodeHttpHandler = <
     let info: TRPCRequestInfo | undefined = undefined;
     let data: any = undefined;
 
-    const { procedure, pathInput } = getProcedure(method, path) ?? {};
+    let procedure:
+      | {
+          type: 'query' | 'mutation';
+          path: string;
+          procedure: OpenApiProcedure;
+        }
+      | undefined;
 
     try {
+      const resolved = getProcedure(method, path);
+      procedure = resolved?.procedure;
+      const pathInput = resolved?.pathInput ?? {};
+
       if (!procedure) {
         if (next) {
           return next();
