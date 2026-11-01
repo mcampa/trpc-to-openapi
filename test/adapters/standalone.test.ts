@@ -1331,6 +1331,329 @@ describe('standalone adapter', () => {
     }
   });
 
+  test('with coerce, leaves values that are not strings for the schema to validate', async () => {
+    const inputSchema = z.object({
+      number: z.number(),
+      nullableNumber: z.number().nullable().optional(),
+      date: z.date().optional(),
+      big: z.bigint().optional(),
+      options: z.object({ limit: z.number().optional() }).optional(),
+      ids: z.array(z.number()).optional(),
+    });
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/echo' } })
+        .input(inputSchema)
+        .output(
+          z.object({
+            number: z.number(),
+            nullableNumber: z.number().nullable().optional(),
+            big: z.string().optional(),
+          }),
+        )
+        .mutation(({ input }) => ({
+          number: input.number,
+          nullableNumber: input.nullableNumber,
+          big: input.big?.toString(),
+        })),
+    });
+
+    const { url } = createHttpServerWithRouter({
+      router: appRouter,
+    });
+    const post = (body: unknown) =>
+      fetch(`${url}/echo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+    {
+      const res = await post({ number: 9, nullableNumber: null, big: 5 });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ number: 9, nullableNumber: null, big: '5' });
+    }
+    // zod's coercion would read these as 0, 1, 1970-01-01 and a bigint `JSON.parse` may have rounded.
+    for (const body of [
+      { number: null },
+      { number: true },
+      { number: 9, date: null },
+      { number: 9, date: 0 },
+      { number: 9, big: 2 ** 53 },
+      { number: 9, big: 'abc' },
+      { number: 9, options: [] },
+      { number: 9, ids: '5' },
+    ]) {
+      const res = await post(body);
+
+      expect(res.status).toBe(400);
+    }
+    // The schema is unchanged, so a caller that parses with it directly still gets an error.
+    expect(inputSchema.safeParse({ number: '9' }).success).toBe(false);
+  });
+
+  test('with coerce, reads only "true" and "false" as booleans, and no empty value as 0', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/echo' } })
+        .input(
+          z.object({
+            flag: z.boolean().optional(),
+            coercedFlag: z.coerce.boolean().optional(),
+            number: z.number().optional(),
+          }),
+        )
+        .output(
+          z.object({
+            flag: z.boolean().optional(),
+            coercedFlag: z.boolean().optional(),
+            number: z.number().optional(),
+          }),
+        )
+        .query(({ input }) => input),
+    });
+
+    const { url } = createHttpServerWithRouter({
+      router: appRouter,
+    });
+
+    for (const flag of [true, false]) {
+      const res = await fetch(`${url}/echo?flag=${flag}`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ flag });
+    }
+    for (const query of [
+      'flag=yes',
+      'flag=TRUE',
+      'flag=1',
+      'flag=%20true',
+      'number=',
+      'number=%20',
+    ]) {
+      const res = await fetch(`${url}/echo?${query}`, { method: 'GET' });
+
+      expect(res.status).toBe(400);
+    }
+    {
+      // A `z.coerce` field is left to zod, which reads any string that is not empty as true.
+      const res = await fetch(`${url}/echo?coercedFlag=false`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ coercedFlag: true });
+    }
+  });
+
+  test('with coerce, converts a piped input against the schema that receives the request', async () => {
+    const appRouter = t.router({
+      transformThenPipe: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/transform-then-pipe' } })
+        .input(
+          z
+            .object({ value: z.string() })
+            .transform(({ value }) => ({ value: value.length }))
+            .pipe(z.object({ value: z.number() })),
+        )
+        .output(z.object({ value: z.number() }))
+        .query(({ input }) => input),
+      countIds: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/count-ids' } })
+        .input(
+          z
+            .object({ ids: z.array(z.number()) })
+            .transform(({ ids }) => ({ total: ids.length }))
+            .pipe(z.object({ total: z.number() }))
+            .optional(),
+        )
+        .output(z.object({ total: z.number() }))
+        .query(({ input }) => ({ total: input?.total ?? 0 })),
+      preprocess: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/preprocess-object' } })
+        .input(
+          z.preprocess(
+            (value) => value,
+            z.object({ number: z.number() }).transform((value) => value),
+          ),
+        )
+        .output(z.object({ number: z.number() }))
+        .query(({ input }) => input),
+    });
+
+    const { url } = createHttpServerWithRouter({
+      router: appRouter,
+    });
+
+    {
+      const res = await fetch(`${url}/transform-then-pipe?value=hello`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ value: 5 });
+    }
+    for (const [query, total] of [
+      ['ids=5', 1],
+      ['ids=5&ids=6', 2],
+    ] as const) {
+      const res = await fetch(`${url}/count-ids?${query}`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ total });
+    }
+    {
+      const res = await fetch(`${url}/preprocess-object?number=9`, { method: 'GET' });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ number: 9 });
+    }
+  });
+
+  test('with coerce, converts strings inside arrays, nested objects, wrappers and recursive schemas', async () => {
+    const node = z.object({
+      n: z.number(),
+      get children() {
+        return z.array(node).optional();
+      },
+    });
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/echo' } })
+        .input(
+          z.object({
+            ids: z.array(z.number()),
+            nested: z.object({ when: z.date(), big: z.bigint() }),
+            maybe: z.number().nullable().default(1),
+            lazyFlag: z.lazy(() => z.boolean().optional()),
+            tree: node,
+            nullableNested: z.object({ a: z.number() }).nullable(),
+          }),
+        )
+        .output(
+          z.object({
+            ids: z.array(z.number()),
+            when: z.string(),
+            big: z.string(),
+            maybe: z.number().nullable(),
+            lazyFlag: z.boolean().optional(),
+            tree: node,
+            nullableNested: z.object({ a: z.number() }).nullable(),
+          }),
+        )
+        .mutation(({ input }) => ({
+          ids: input.ids,
+          when: input.nested.when.toISOString(),
+          big: input.nested.big.toString(),
+          maybe: input.maybe,
+          lazyFlag: input.lazyFlag,
+          tree: input.tree,
+          nullableNested: input.nullableNested,
+        })),
+    });
+
+    const { url } = createHttpServerWithRouter({
+      router: appRouter,
+    });
+
+    const res = await fetch(`${url}/echo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ids: ['1', '2'],
+        nested: { when: '2026-01-01T00:00:00.000Z', big: '5' },
+        maybe: '3',
+        lazyFlag: 'true',
+        tree: { n: '1', children: [{ n: '2' }] },
+        nullableNested: null,
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({
+      ids: [1, 2],
+      when: '2026-01-01T00:00:00.000Z',
+      big: '5',
+      maybe: 3,
+      lazyFlag: true,
+      tree: { n: 1, children: [{ n: 2 }] },
+      nullableNested: null,
+    });
+    // Only keys the input has are copied, so an inherited name such as `toString` is not added.
+    expect(zodUtils.coerceInput(z.object({ toString: z.string().optional() }), {})).toEqual({});
+    // Nested objects and arrays are copied, so the input itself is left as it arrived.
+    const original = { ids: ['1'], nested: { big: '5' } };
+    zodUtils.coerceInput(
+      z.object({ ids: z.array(z.number()), nested: z.object({ big: z.bigint() }) }),
+      original,
+    );
+    expect(original).toEqual({ ids: ['1'], nested: { big: '5' } });
+  });
+
+  test('with coerce, does not let a __proto__ key set the prototype of the input', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/echo' } })
+        .input(
+          z.object({
+            profile: z.object({ name: z.string(), isAdmin: z.boolean().default(false) }),
+          }),
+        )
+        .output(z.object({ isAdmin: z.boolean() }))
+        .mutation(({ input }) => ({ isAdmin: input.profile.isAdmin })),
+      flat: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/flat' } })
+        .input(z.object({ name: z.string(), isAdmin: z.boolean().default(false) }))
+        .output(z.object({ isAdmin: z.boolean() }))
+        .mutation(({ input }) => ({ isAdmin: input.isAdmin })),
+    });
+
+    const { url } = createHttpServerWithRouter({
+      router: appRouter,
+    });
+
+    // Written as text, because `__proto__` in an object literal sets the prototype instead.
+    for (const [path, json] of [
+      ['/echo', '{"profile":{"__proto__":{"isAdmin":true},"name":"x"}}'],
+      ['/flat', '{"__proto__":{"isAdmin":true},"name":"x"}'],
+    ]) {
+      const res = await fetch(`${url}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: json,
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({ isAdmin: false });
+    }
+  });
+
+  test('with coerce, passes the input to onError before conversion', async () => {
+    const appRouter = t.router({
+      fail: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/fail' } })
+        .input(z.object({ number: z.number() }))
+        .output(z.object({}))
+        .query(() => {
+          throw new TRPCError({ code: 'CONFLICT' });
+        }),
+    });
+
+    const { url } = createHttpServerWithRouter({
+      router: appRouter,
+    });
+
+    const res = await fetch(`${url}/fail?number=9`, { method: 'GET' });
+
+    expect(res.status).toBe(409);
+    expect(onErrorMock).toHaveBeenCalledWith(expect.objectContaining({ input: { number: '9' } }));
+  });
+
   test('with x-www-form-urlencoded', async () => {
     const appRouter = t.router({
       echo: t.procedure

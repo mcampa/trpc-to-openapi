@@ -22,7 +22,8 @@ import {
   acceptsRequestBody,
   normalizePath,
   getInputOutputParsers,
-  coerceSchema,
+  coerceInput,
+  unwrapZodInputSide,
   instanceofZodTypeLikeVoid,
   instanceofZodTypeObject,
   instanceofZodTypeOptional,
@@ -139,9 +140,15 @@ export const createOpenApiNodeHttpHandler = <
       }
 
       // if supported, coerce all string values to correct types
+      let procedureInput = input;
       if (zodSupportsCoerce && instanceofZodTypeObject(unwrappedSchema)) {
+        // The fields of the schema that first receives the input, which `coerceInput` reads too.
+        const inputSide = unwrapZodInputSide(inputParser);
+        const inputShape = instanceofZodTypeObject(inputSide)
+          ? inputSide.shape
+          : unwrappedSchema.shape;
         if (!useBody) {
-          for (const [key, shape] of Object.entries(unwrappedSchema.shape)) {
+          for (const [key, shape] of Object.entries(inputShape)) {
             let isArray = false;
 
             // Check if it's a direct array
@@ -161,7 +168,8 @@ export const createOpenApiNodeHttpHandler = <
             }
           }
         }
-        coerceSchema(unwrappedSchema);
+        // A copy, so `onError` and the error shape still get the input before conversion.
+        procedureInput = coerceInput(inputParser, input);
       }
 
       info = {
@@ -183,7 +191,7 @@ export const createOpenApiNodeHttpHandler = <
         caller as any,
       ) as OpenApiProcedure;
 
-      data = await procedureFn(input);
+      data = await procedureFn(procedureInput);
 
       const meta = responseMeta?.({
         type: procedure.type,

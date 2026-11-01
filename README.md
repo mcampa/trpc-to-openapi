@@ -144,7 +144,9 @@ A procedure can accept a set of inputs via URL path parameters. You can add a pa
 
 ### Query parameters
 
-Query & path parameter inputs are always accepted as a `string`. This library will attempt to [coerce](https://github.com/colinhacks/zod#coercion-for-primitives) your input values to the following primitive types out of the box: `number`, `boolean`, `bigint` and `date`. If you wish to support others such as `object`, `array` etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
+Query & path parameter inputs are always accepted as a `string`. This library converts string values to the following primitive types out of the box: `number`, `boolean` (from `"true"` or `"false"` only), `bigint` and `date`. Empty strings, and values like `null` or `true` in a JSON body, are left for your schema to validate; use [`z.coerce`](https://github.com/colinhacks/zod#coercion-for-primitives) if you want zod's own coercion instead. If you wish to support others such as `object`, `array` etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
+
+Conversion happens before your input schema runs, so in a top-level `.pipe()` or `z.preprocess()`, a later step that needs a string converted should use `z.coerce`.
 
 ```typescript
 // Router
