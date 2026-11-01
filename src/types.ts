@@ -34,7 +34,27 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
     tags?: string[];
     contentTypes?: OpenApiContentType[];
     deprecated?: boolean;
+    /**
+     * A zod object schema describing headers expected on requests to this
+     * endpoint.
+     *
+     * This schema is documentation-only: it is emitted into the generated
+     * OpenAPI document to describe the expected headers. It is not read,
+     * validated, or enforced at runtime, and it does not make headers
+     * available to the procedure. Use `createContext` or framework middleware
+     * to validate headers and expose them to your procedures, and an OpenAPI
+     * security scheme for authentication/authorization.
+     */
     requestHeaders?: ZodObject;
+    /**
+     * A zod object schema describing headers returned by this endpoint.
+     *
+     * This schema is documentation-only: it is emitted into the generated
+     * OpenAPI document to describe the expected headers. It is not read,
+     * validated, or enforced at runtime. Set response headers yourself (e.g.
+     * via `responseMeta` or framework middleware), and use an OpenAPI
+     * security scheme for authentication/authorization.
+     */
     responseHeaders?: ZodObject;
     successDescription?: string;
     errorResponses?: number[] | Record<number, string>;

@@ -190,7 +190,9 @@ const body = await res.json(); /* { greeting: 'Hello Lily!' } */
 
 ### Custom headers
 
-Any custom headers can be specified in the `meta.openapi.requestHeaders` and `meta.openapi.responseHeaders` zod object schema, these headers will not be validated. Please consider using [Authorization](#authorization) for first-class OpenAPI auth/security support.
+Any custom headers can be specified in the `meta.openapi.requestHeaders` and `meta.openapi.responseHeaders` zod object schemas. These schemas are **documentation-only**: they are emitted into the generated OpenAPI document to describe the expected request and response headers, but they are not validated or enforced at runtime, and they do not make request headers available to the procedure.
+
+To validate headers or make them available to your procedures, use `createContext` or framework middleware. For authentication and authorization, see [Authorization](#authorization) for first-class OpenAPI security support.
 
 ## HTTP Responses
 
@@ -381,8 +383,8 @@ Please see [full typings here](src/types.ts).
 | `summary`            | `string`                                | A short summary of the endpoint included in the OpenAPI document.                                                              | `false`  | `undefined`             |
 | `description`        | `string`                                | A verbose description of the endpoint included in the OpenAPI document.                                                        | `false`  | `undefined`             |
 | `tags`               | `string[]`                              | A list of tags used for logical grouping of endpoints in the OpenAPI document.                                                 | `false`  | `undefined`             |
-| `requestHeaders`     | `AnyZodObject`                          | A zod object schema describing any custom headers to add to the request for this endpoint in the OpenAPI document.             | `false`  | `undefined`             |
-| `responseHeaders`    | `AnyZodObject`                          | A zod object schema describing any custom headers to add to the response for this endpoint in the OpenAPI document.            | `false`  | `undefined`             |
+| `requestHeaders`     | `AnyZodObject`                          | A zod object schema describing custom request headers; documented in the OpenAPI document and not validated at runtime.       | `false`  | `undefined`             |
+| `responseHeaders`    | `AnyZodObject`                          | A zod object schema describing custom response headers; documented in the OpenAPI document and not validated at runtime.      | `false`  | `undefined`             |
 | `successDescription` | `string`                                | A string to use as the description for a successful response.                                                                  | `false`  | `'Successful response'` |
 | `errorResponses`     | `number[] \| { [key: number]: string }` | A list of error response codes or an object of response codes and their description to add to the responses for this endpoint. | `false`  | `undefined`             |
 | `contentTypes`       | `OpenApiContentType[]`                  | A set of content types specified as accepted in the OpenAPI document.                                                          | `false`  | `['application/json']`  |
