@@ -3562,4 +3562,41 @@ describe('generator', () => {
 
     expect(JSON.stringify(document)).toContain('overridden-by-options');
   });
+
+  test('documents bigint as a string', () => {
+    const appRouter = t.router({
+      big: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/big' } })
+        .input(z.object({ n: z.bigint() }))
+        .output(z.object({ n: z.bigint() }))
+        .mutation(({ input }) => input),
+    });
+
+    const document = generateOpenApiDocument(appRouter, defaultDocOpts);
+    const operation = document.paths!['/big']!.post!;
+
+    expect((operation.requestBody as any).content['application/json'].schema.properties.n).toEqual({
+      type: 'string',
+      format: 'int64',
+    });
+    expect(
+      (operation.responses as any)['200'].content['application/json'].schema.properties.n,
+    ).toEqual({
+      type: 'string',
+      format: 'int64',
+    });
+  });
+
+  test('terminates on a recursive union input', () => {
+    const Json: z.ZodType<any> = z.lazy(() => z.union([z.string(), z.array(Json)]));
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/echo' } })
+        .input(z.object({ payload: Json }))
+        .output(z.object({ ok: z.boolean() }))
+        .mutation(() => ({ ok: true })),
+    });
+
+    expect(() => generateOpenApiDocument(appRouter, defaultDocOpts)).not.toThrow();
+  });
 });

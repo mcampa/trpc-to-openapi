@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import type { ZodObject, ZodRawShape, ZodType } from 'zod/v4';
 import type { $ZodType, $ZodTypes } from 'zod/v4/core';
 import type { $ZodTypeDef } from 'zod/v4/core/schemas';
+import { isPlainObject, sanitizeInput, setOwn } from './object';
 
 export const instanceofZodType = (type: any): type is $ZodTypes => {
   return !!type?._zod?.def?.type;
@@ -32,45 +33,142 @@ export const instanceofZodTypeLikeVoid = (type: $ZodType): type is ZodTypeLikeVo
   );
 };
 
-export const unwrapZodType = (type: $ZodType, unwrapPreprocess: boolean): ZodType => {
+/**
+ * Recursion state shared by one traversal of a schema. The sets are
+ * path-scoped: an entry is removed once that branch is done, so a schema that
+ * is reused by siblings is traversed again.
+ */
+type ZodTraversalState = {
+  lazies: Set<$ZodType>;
+  pipes: Set<$ZodType>;
+};
+
+const createTraversalState = (): ZodTraversalState => ({
+  lazies: new Set(),
+  pipes: new Set(),
+});
+
+/**
+ * Resolves a lazy schema's getter while that lazy schema is on the current
+ * path. Lazy getters may return a new instance on every call, so the lazy
+ * schema itself is tracked, and a cycle returns `onCycle()`.
+ */
+const withLazyResolution = <T>(
+  type: $ZodType,
+  state: ZodTraversalState,
+  onCycle: () => T,
+  resolve: (inner: $ZodType) => T,
+): T => {
+  if (state.lazies.has(type)) {
+    return onCycle();
+  }
+  state.lazies.add(type);
+  try {
+    return resolve((type as z.ZodLazy<$ZodTypes>).def.getter());
+  } finally {
+    state.lazies.delete(type);
+  }
+};
+
+const unwrapZodTypeInternal = (
+  type: $ZodType,
+  unwrapPreprocess: boolean,
+  state: ZodTraversalState,
+): ZodType => {
   // TODO: Allow parsing array query params
   if (instanceofZodTypeKind(type, 'array')) {
-    return unwrapZodType((type as z.ZodArray<$ZodTypes>).element, unwrapPreprocess);
+    return unwrapZodTypeInternal((type as z.ZodArray<$ZodTypes>).element, unwrapPreprocess, state);
   }
   if (instanceofZodTypeKind(type, 'enum')) {
-    return unwrapZodType(z.string(), unwrapPreprocess);
+    return unwrapZodTypeInternal(z.string(), unwrapPreprocess, state);
   }
   if (instanceofZodTypeKind(type, 'nullable')) {
-    return unwrapZodType((type as z.ZodNullable<$ZodTypes>).unwrap(), unwrapPreprocess);
+    return unwrapZodTypeInternal(
+      (type as z.ZodNullable<$ZodTypes>).unwrap(),
+      unwrapPreprocess,
+      state,
+    );
   }
 
   if (instanceofZodTypeKind(type, 'optional')) {
-    return unwrapZodType((type as z.ZodOptional<$ZodTypes>).unwrap(), unwrapPreprocess);
+    return unwrapZodTypeInternal(
+      (type as z.ZodOptional<$ZodTypes>).unwrap(),
+      unwrapPreprocess,
+      state,
+    );
   }
   if (instanceofZodTypeKind(type, 'default')) {
-    return unwrapZodType((type as z.ZodDefault<$ZodTypes>).unwrap(), unwrapPreprocess);
+    return unwrapZodTypeInternal(
+      (type as z.ZodDefault<$ZodTypes>).unwrap(),
+      unwrapPreprocess,
+      state,
+    );
   }
   if (instanceofZodTypeKind(type, 'prefault')) {
-    return unwrapZodType((type as z.ZodDefault<$ZodTypes>).unwrap(), unwrapPreprocess);
+    return unwrapZodTypeInternal(
+      (type as z.ZodDefault<$ZodTypes>).unwrap(),
+      unwrapPreprocess,
+      state,
+    );
   }
   if (instanceofZodTypeKind(type, 'lazy')) {
-    return unwrapZodType((type as z.ZodLazy<$ZodTypes>).def.getter(), unwrapPreprocess);
+    return withLazyResolution(
+      type,
+      state,
+      () => type as unknown as ZodType,
+      (inner) => unwrapZodTypeInternal(inner, unwrapPreprocess, state),
+    );
   }
   if (instanceofZodTypeKind(type, 'pipe') && unwrapPreprocess) {
     // For .transform() pipes in Zod 4, def.out is a 'transform' type -
     // use def.in (the input schema shape) instead
-    if (instanceofZodTypeKind((type as z.ZodPipe<$ZodTypes>)._zod.def.out, 'transform')) {
-      return unwrapZodType((type as z.ZodPipe<$ZodTypes>)._zod.def.in, unwrapPreprocess);
+    const pipe = type as z.ZodPipe<$ZodTypes>;
+    if (instanceofZodTypeKind(pipe._zod.def.out, 'transform')) {
+      return unwrapZodTypeInternal(pipe._zod.def.in, unwrapPreprocess, state);
     }
-    return unwrapZodType((type as z.ZodPipe<$ZodTypes>).def.out, unwrapPreprocess);
+    return unwrapZodTypeInternal(pipe._zod.def.out, unwrapPreprocess, state);
   }
   return type as ZodType;
 };
 
-export const instanceofZodTypeLikeString = (
-  _type: $ZodType,
-): boolean /* : _type is ZodTypeLikeString  */ => {
-  const type = unwrapZodType(_type, false);
+export const unwrapZodType = (type: $ZodType, unwrapPreprocess: boolean): ZodType => {
+  return unwrapZodTypeInternal(type, unwrapPreprocess, createTraversalState());
+};
+
+const instanceofZodTypeLikeStringInternal = (
+  type: $ZodType,
+  state: ZodTraversalState,
+): boolean /* : type is ZodTypeLikeString  */ => {
+  // Resolve lazy schemas here, keeping the lazy on the traversal path for the
+  // whole recursive descent. `unwrapZodType` cannot be used: a getter that
+  // builds a new union on every call would never be detected as a cycle.
+  if (instanceofZodTypeKind(type, 'lazy')) {
+    if (state.lazies.has(type)) {
+      return false;
+    }
+    state.lazies.add(type);
+    try {
+      return instanceofZodTypeLikeStringInternal(
+        (type as z.ZodLazy<$ZodTypes>).def.getter(),
+        state,
+      );
+    } finally {
+      state.lazies.delete(type);
+    }
+  }
+
+  if (
+    instanceofZodTypeKind(type, 'optional') ||
+    instanceofZodTypeKind(type, 'nullable') ||
+    instanceofZodTypeKind(type, 'default') ||
+    instanceofZodTypeKind(type, 'prefault')
+  ) {
+    return instanceofZodTypeLikeStringInternal((type as z.ZodOptional<$ZodTypes>).unwrap(), state);
+  }
+
+  if (instanceofZodTypeKind(type, 'array')) {
+    return instanceofZodTypeLikeStringInternal((type as z.ZodArray<$ZodTypes>).element, state);
+  }
 
   if (instanceofZodTypeKind(type, 'pipe')) {
     return true;
@@ -78,18 +176,21 @@ export const instanceofZodTypeLikeString = (
 
   // TODO improve this
   if (instanceofZodTypeKind(type, 'union')) {
-    return !(type as any)._def.options.some((option: any) => !instanceofZodTypeLikeString(option));
+    return !(type as any)._zod.def.options.some(
+      (option: $ZodType) => !instanceofZodTypeLikeStringInternal(option, state),
+    );
   }
 
   if (instanceofZodTypeKind(type, 'intersection')) {
+    const def = (type as z.ZodIntersection<$ZodTypes, $ZodTypes>)._zod.def;
     return (
-      instanceofZodTypeLikeString((type as z.ZodIntersection<$ZodTypes, $ZodTypes>).def.left) &&
-      instanceofZodTypeLikeString((type as z.ZodIntersection<$ZodTypes, $ZodTypes>).def.right)
+      instanceofZodTypeLikeStringInternal(def.left, state) &&
+      instanceofZodTypeLikeStringInternal(def.right, state)
     );
   }
 
   if (instanceofZodTypeKind(type, 'literal')) {
-    return typeof (type as z.ZodLiteral<any>).value === 'string';
+    return typeof (type as any).value === 'string';
   }
 
   if (instanceofZodTypeKind(type, 'enum')) {
@@ -99,18 +200,19 @@ export const instanceofZodTypeLikeString = (
   return instanceofZodTypeKind(type, 'string');
 };
 
+export const instanceofZodTypeLikeString = (
+  _type: $ZodType,
+): boolean /* : _type is ZodTypeLikeString  */ => {
+  return instanceofZodTypeLikeStringInternal(_type, createTraversalState());
+};
+
 export const zodSupportsCoerce = 'coerce' in z;
 
 export type ZodTypeCoercible = z.ZodNumber | z.ZodBoolean | z.ZodBigInt | z.ZodDate;
 
 export const instanceofZodTypeCoercible = (_type: $ZodType): _type is ZodTypeCoercible => {
-  const type = unwrapZodType(_type, false);
-  return (
-    instanceofZodTypeKind(type, 'number') ||
-    instanceofZodTypeKind(type, 'boolean') ||
-    instanceofZodTypeKind(type, 'bigint') ||
-    instanceofZodTypeKind(type, 'date')
-  );
+  const type = unwrapZodWrappersInternal(_type, createTraversalState());
+  return isCoercibleType(type);
 };
 
 /**
@@ -119,22 +221,140 @@ export const instanceofZodTypeCoercible = (_type: $ZodType): _type is ZodTypeCoe
  * strings, such as `null` to `0`.
  */
 export const coerceSchema = (schema: ZodObject<ZodRawShape>) => {
-  Object.values(schema.shape).forEach((shapeSchema) => {
-    const unwrappedShapeSchema = unwrapZodType(shapeSchema, false);
-    if (instanceofZodTypeCoercible(unwrappedShapeSchema)) unwrappedShapeSchema._def.coerce = true;
-    else if (instanceofZodTypeObject(unwrappedShapeSchema)) coerceSchema(unwrappedShapeSchema);
-  });
+  coerceSchemaInternal(schema, createTraversalState());
 };
 
+const coerceSchemaInternal = (schema: $ZodType, state: ZodTraversalState): void => {
+  // Handle lazy schemas here rather than through `unwrapZodType`: the lazy must
+  // stay on the traversal path for the whole recursive descent, otherwise a
+  // getter that returns a new instance on every call never terminates.
+  if (instanceofZodTypeKind(schema, 'lazy')) {
+    if (state.lazies.has(schema)) {
+      return;
+    }
+    state.lazies.add(schema);
+    try {
+      coerceSchemaInternal((schema as z.ZodLazy<$ZodTypes>).def.getter(), state);
+    } finally {
+      state.lazies.delete(schema);
+    }
+    return;
+  }
+
+  if (
+    instanceofZodTypeKind(schema, 'optional') ||
+    instanceofZodTypeKind(schema, 'nullable') ||
+    instanceofZodTypeKind(schema, 'default') ||
+    instanceofZodTypeKind(schema, 'prefault')
+  ) {
+    coerceSchemaInternal((schema as z.ZodOptional<$ZodTypes>).unwrap(), state);
+    return;
+  }
+
+  if (
+    instanceofZodTypeKind(schema, 'catch') ||
+    instanceofZodTypeKind(schema, 'readonly') ||
+    instanceofZodTypeKind(schema, 'nonoptional')
+  ) {
+    coerceSchemaInternal((schema as any)._zod.def.innerType as $ZodType, state);
+    return;
+  }
+
+  if (instanceofZodTypeKind(schema, 'array')) {
+    coerceSchemaInternal((schema as z.ZodArray<$ZodTypes>).element, state);
+    return;
+  }
+
+  if (instanceofZodTypeKind(schema, 'pipe')) {
+    coerceSchemaInternal((schema as z.ZodPipe<$ZodTypes>)._zod.def.in as $ZodType, state);
+    return;
+  }
+
+  if (instanceofZodTypeCoercible(schema)) {
+    (schema as any)._def.coerce = true;
+    return;
+  }
+
+  if (instanceofZodTypeObject(schema)) {
+    for (const shapeSchema of Object.values(schema.shape)) {
+      coerceSchemaInternal(shapeSchema, state);
+    }
+  }
+};
+
+// Strict decimal only: optional sign, digits with optional fraction (".5" and
+// "5." included) and an optional exponent. Rejects hex, whitespace,
+// "Infinity", "NaN" and the empty string.
+const DECIMAL_STRING = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+const INTEGER_STRING = /^[+-]?\d+$/;
+
+const hasOwn = (target: object, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(target, key);
+
 /**
- * Converts each string in a procedure's `input` that `schema` expects to be a number, boolean,
- * bigint or date, because query and path parameters always arrive as strings, and each safe integer
- * that it expects to be a bigint. Any other value, such as `null` or `true` in a JSON body, is left
- * for the schema to validate, and so is a field declared with `z.coerce`. Objects and arrays are
- * copied rather than changed, and the schema is not changed.
+ * Unwraps common zod wrappers so coercion reaches the schema that receives the
+ * value. Pipes use their input side when it is an object, as in
+ * `z.object(...).transform(...)`, and their output side otherwise.
  */
-export const coerceInput = (schema: $ZodType, input: unknown): unknown => {
-  return coerceValue(unwrapZodInputSide(schema), input);
+const unwrapZodWrappersInternal = (type: $ZodType, state: ZodTraversalState): $ZodType => {
+  if (
+    instanceofZodTypeKind(type, 'optional') ||
+    instanceofZodTypeKind(type, 'nullable') ||
+    instanceofZodTypeKind(type, 'default') ||
+    instanceofZodTypeKind(type, 'prefault')
+  ) {
+    return unwrapZodWrappersInternal((type as z.ZodOptional<$ZodTypes>).unwrap(), state);
+  }
+  if (
+    instanceofZodTypeKind(type, 'catch') ||
+    instanceofZodTypeKind(type, 'readonly') ||
+    instanceofZodTypeKind(type, 'nonoptional')
+  ) {
+    return unwrapZodWrappersInternal((type as any)._zod.def.innerType as $ZodType, state);
+  }
+  if (instanceofZodTypeKind(type, 'lazy')) {
+    return withLazyResolution(
+      type,
+      state,
+      () => type,
+      (inner) => unwrapZodWrappersInternal(inner, state),
+    );
+  }
+  if (instanceofZodTypeKind(type, 'pipe')) {
+    const { in: inSchema, out: outSchema } = (type as z.ZodPipe<$ZodTypes, $ZodTypes>)._zod.def;
+    const inputSide = unwrapZodWrappersInternal(inSchema, state);
+    if (instanceofZodTypeObject(inputSide)) {
+      return inputSide;
+    }
+    return unwrapZodWrappersInternal(outSchema, state);
+  }
+  return type;
+};
+
+const unwrapPipeInputSide = (type: $ZodType, state: ZodTraversalState): $ZodType => {
+  if (state.pipes.has(type)) {
+    return type;
+  }
+  state.pipes.add(type);
+  try {
+    const { in: inSchema, out: outSchema } = (type as z.ZodPipe<$ZodTypes, $ZodTypes>)._zod.def;
+    const inputSide = unwrapZodInputSideInternal(inSchema, state);
+    if (instanceofZodTypeObject(inputSide)) return inputSide;
+    return unwrapZodInputSideInternal(outSchema, state);
+  } finally {
+    state.pipes.delete(type);
+  }
+};
+
+const unwrapZodInputSideInternal = (schema: $ZodType, state: ZodTraversalState): $ZodType => {
+  if (instanceofZodTypeKind(schema, 'pipe')) {
+    return unwrapPipeInputSide(schema, state);
+  }
+  const type = unwrapZodWrappersInternal(schema, state);
+  if (instanceofZodTypeKind(type, 'pipe')) {
+    return unwrapPipeInputSide(type, state);
+  }
+  return type;
 };
 
 /**
@@ -143,41 +363,318 @@ export const coerceInput = (schema: $ZodType, input: unknown): unknown => {
  * For `z.preprocess`, whose input side is a function, it is the schema after the function.
  */
 export const unwrapZodInputSide = (schema: $ZodType): $ZodType => {
-  const type = unwrapZodWrappers(schema);
-  if (!instanceofZodTypeKind(type, 'pipe')) return type;
-  const { in: inSchema, out: outSchema } = (type as z.ZodPipe<$ZodTypes, $ZodTypes>)._zod.def;
-  const inputSide = unwrapZodInputSide(inSchema);
-  if (instanceofZodTypeObject(inputSide)) return inputSide;
-  return unwrapZodInputSide(outSchema);
+  return unwrapZodInputSideInternal(schema, createTraversalState());
 };
 
-const coerceValue = (schema: $ZodType, input: unknown): unknown => {
-  const type = unwrapZodWrappers(schema);
+export type CoercionMode = 'query' | 'body';
+
+const createUtcDate = (
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  millisecond: number,
+): Date | undefined => {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, millisecond);
+  // A calendar round-trip rejects impossible dates such as 2020-02-30 and
+  // out-of-range times such as 24:00, which the Date constructor would roll
+  // over silently.
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day ||
+    date.getUTCHours() !== hour ||
+    date.getUTCMinutes() !== minute ||
+    date.getUTCSeconds() !== second
+  ) {
+    return undefined;
+  }
+  return date;
+};
+
+const ISO_DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+// Date-time per RFC 3339: the offset is required. Seconds and fractions are
+// optional but may only appear together when the fraction follows seconds.
+const ISO_DATE_TIME =
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/;
+
+const parseStrictIsoDate = (value: string): Date | undefined => {
+  const dateOnly = ISO_DATE_ONLY.exec(value);
+  if (dateOnly) {
+    return createUtcDate(Number(dateOnly[1]), Number(dateOnly[2]), Number(dateOnly[3]), 0, 0, 0, 0);
+  }
+
+  const dateTime = ISO_DATE_TIME.exec(value);
+  if (!dateTime) {
+    return undefined;
+  }
+
+  const fraction = dateTime[7];
+  const date = createUtcDate(
+    Number(dateTime[1]),
+    Number(dateTime[2]),
+    Number(dateTime[3]),
+    Number(dateTime[4]),
+    Number(dateTime[5]),
+    dateTime[6] === undefined ? 0 : Number(dateTime[6]),
+    fraction === undefined ? 0 : Number((fraction + '000').slice(0, 3)),
+  );
+  if (!date) {
+    return undefined;
+  }
+
+  const sign = dateTime[8];
+  if (sign !== undefined) {
+    const offsetHours = Number(dateTime[9]);
+    const offsetMinutes = Number(dateTime[10]);
+    if (offsetHours > 23 || offsetMinutes > 59) {
+      return undefined;
+    }
+    const offset = (offsetHours * 60 + offsetMinutes) * (sign === '-' ? -1 : 1);
+    date.setTime(date.getTime() - offset * 60_000);
+  }
+  return date;
+};
+
+const coerceString = (type: $ZodType, value: string, mode: CoercionMode): unknown => {
+  // Number('') and BigInt('') are 0, but an empty parameter is not a zero.
+  if (value.trim() === '') return value;
+
+  if (instanceofZodTypeKind(type, 'number')) {
+    if (mode === 'body') {
+      return Number(value);
+    }
+    if (!DECIMAL_STRING.test(value)) return value;
+    // Leave integers outside the safe range as strings so zod rejects them
+    // instead of silently rounding to a different number.
+    if (INTEGER_STRING.test(value) && !Number.isSafeInteger(Number(value))) return value;
+    return Number(value);
+  }
+
+  if (instanceofZodTypeKind(type, 'date')) {
+    if (mode === 'body') {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date;
+    }
+    return parseStrictIsoDate(value) ?? value;
+  }
+
+  if (instanceofZodTypeKind(type, 'bigint')) {
+    if (mode === 'body') {
+      try {
+        return BigInt(value);
+      } catch {
+        return value;
+      }
+    }
+    return INTEGER_STRING.test(value) ? BigInt(value) : value;
+  }
+
+  // Boolean('false') is true, so only these two strings are converted.
+  if (instanceofZodTypeKind(type, 'boolean')) {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+  }
+  return value;
+};
+
+const inputJavascriptKind = (value: unknown): string => {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (value instanceof Date) return 'date';
+  return typeof value;
+};
+
+const zodSchemaKind = (schema: $ZodType, state: ZodTraversalState): string | undefined => {
+  const unwrapped = unwrapZodWrappersInternal(schema, state);
+  switch (unwrapped?._zod?.def?.type) {
+    case 'object':
+    case 'record':
+    case 'intersection':
+      return 'object';
+    case 'array':
+    case 'tuple':
+      return 'array';
+    case 'string':
+    case 'enum':
+    case 'template_literal':
+      return 'string';
+    case 'number':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    case 'bigint':
+      return 'bigint';
+    case 'date':
+      return 'date';
+    case 'literal':
+      return inputJavascriptKind((unwrapped as any).value);
+    case 'null':
+      return 'null';
+    case 'void':
+    case 'undefined':
+    case 'never':
+      return 'undefined';
+    default:
+      // Unions and unknown kinds match any input kind.
+      return undefined;
+  }
+};
+
+const zodSchemaMatchesInput = (
+  schema: $ZodType,
+  input: unknown,
+  state: ZodTraversalState,
+): boolean => {
+  const unwrapped = unwrapZodWrappersInternal(schema, state);
+  if (instanceofZodTypeKind(unwrapped, 'union')) {
+    return ((unwrapped as any)._zod.def.options as $ZodType[]).some((option) =>
+      zodSchemaMatchesInput(option, input, state),
+    );
+  }
+  const kind = zodSchemaKind(unwrapped, state);
+  return kind === undefined || kind === inputJavascriptKind(input);
+};
+
+const findDiscriminatedUnionOption = (
+  options: $ZodType[],
+  discriminator: string,
+  value: unknown,
+  state: ZodTraversalState,
+): $ZodType | undefined => {
+  for (const option of options) {
+    const unwrapped = unwrapZodWrappersInternal(option, state);
+    if (!instanceofZodTypeObject(unwrapped)) continue;
+    if (!hasOwn(unwrapped.shape, discriminator)) continue;
+    const discriminatorSchema = unwrapZodWrappersInternal(unwrapped.shape[discriminator]!, state);
+    if (
+      instanceofZodTypeKind(discriminatorSchema, 'literal') &&
+      (discriminatorSchema as any).value === value
+    ) {
+      return option;
+    }
+  }
+  return undefined;
+};
+
+/** Copies an object's own enumerable keys into a normal-prototype object. */
+const copyObjectForCoercion = (input: object): Record<string, unknown> => {
+  if (isPlainObject(input)) {
+    return sanitizeInput(input) as Record<string, unknown>;
+  }
+
+  const copy: Record<string, unknown> = {};
+  for (const key of Object.keys(input)) {
+    if (key === '__proto__') continue;
+    setOwn(copy, key, (input as Record<string, unknown>)[key]);
+  }
+  return copy;
+};
+
+const isCoercibleType = (type: $ZodType): boolean =>
+  instanceofZodTypeKind(type, 'number') ||
+  instanceofZodTypeKind(type, 'boolean') ||
+  instanceofZodTypeKind(type, 'bigint') ||
+  instanceofZodTypeKind(type, 'date');
+
+const coerceValue = (
+  schema: $ZodType,
+  input: unknown,
+  mode: CoercionMode,
+  state: ZodTraversalState,
+): unknown => {
+  const type = unwrapZodWrappersInternal(schema, state);
 
   if (instanceofZodTypeKind(type, 'array')) {
     if (!Array.isArray(input)) return input;
     const element = (type as z.ZodArray<$ZodTypes>).element;
-    return input.map((item) => coerceValue(element, item));
+    return input.map((item) => coerceValue(element, item, mode, state));
   }
 
-  if (instanceofZodTypeObject(type)) {
+  if (instanceofZodTypeKind(type, 'tuple')) {
+    if (!Array.isArray(input)) return input;
+    const { items, rest } = (type as any)._zod.def as {
+      items: $ZodType[];
+      rest: $ZodType | null;
+    };
+    return input.map((item, index) => {
+      const itemSchema = index < items.length ? items[index] : rest;
+      return itemSchema ? coerceValue(itemSchema, item, mode, state) : item;
+    });
+  }
+
+  if (instanceofZodTypeKind(type, 'record')) {
     if (typeof input !== 'object' || input === null || Array.isArray(input)) return input;
-    // Not a spread: the CommonJS build compiles it to `Object.assign`, which would let a
-    // `__proto__` key in the JSON set the copy's prototype.
-    const coerced: Record<string, unknown> = Object.fromEntries(Object.entries(input));
-    for (const [key, shapeSchema] of Object.entries(type.shape)) {
-      // Not `in`, which would also match inherited names such as `constructor`.
-      if (Object.prototype.hasOwnProperty.call(coerced, key)) {
-        coerced[key] = coerceValue(shapeSchema, coerced[key]);
-      }
+    const valueType = (type as any)._zod.def.valueType as $ZodType;
+    const coerced = copyObjectForCoercion(input);
+    for (const key of Object.keys(coerced)) {
+      setOwn(coerced, key, coerceValue(valueType, coerced[key], mode, state));
     }
     return coerced;
   }
 
+  if (instanceofZodTypeObject(type)) {
+    if (typeof input !== 'object' || input === null || Array.isArray(input)) return input;
+    const coerced = copyObjectForCoercion(input);
+    for (const [key, shapeSchema] of Object.entries(type.shape as Record<string, $ZodType>)) {
+      // Define own `undefined` for absent keys. The input has a normal
+      // prototype, so inherited names such as `toString`, `constructor`,
+      // `valueOf` and `hasOwnProperty` would otherwise resolve to members of
+      // `Object.prototype` when zod reads the input.
+      const value = hasOwn(coerced, key)
+        ? coerceValue(shapeSchema, coerced[key], mode, state)
+        : undefined;
+      setOwn(coerced, key, value);
+    }
+    return coerced;
+  }
+
+  if (instanceofZodTypeKind(type, 'union')) {
+    const def = (type as any)._zod.def as {
+      options: $ZodType[];
+      discriminator?: string;
+    };
+    if (
+      def.discriminator !== undefined &&
+      typeof input === 'object' &&
+      input !== null &&
+      !Array.isArray(input) &&
+      hasOwn(input, def.discriminator)
+    ) {
+      const selected = findDiscriminatedUnionOption(
+        def.options,
+        def.discriminator,
+        (input as Record<string, unknown>)[def.discriminator],
+        state,
+      );
+      if (selected) {
+        return coerceValue(selected, input, mode, state);
+      }
+    }
+
+    // Pick the option that matches the input's JavaScript kind so the value is
+    // coerced with the same rules as a standalone field of that type.
+    const selected =
+      def.options.find((option) => zodSchemaMatchesInput(option, input, state)) ?? def.options[0];
+    return selected ? coerceValue(selected, input, mode, state) : input;
+  }
+
+  if (instanceofZodTypeKind(type, 'intersection')) {
+    const { left, right } = (type as any)._zod.def as {
+      left: $ZodType;
+      right: $ZodType;
+    };
+    return coerceValue(right, coerceValue(left, input, mode, state), mode, state);
+  }
+
   // A `z.coerce` field converts the value itself, by zod's rules.
-  if (instanceofZodTypeCoercible(type) && type._zod.def.coerce) return input;
-  if (typeof input === 'string') return coerceString(type, input);
-  // JSON has no bigint, and the OpenAPI document describes one as an integer. `JSON.parse` may
+  if (isCoercibleType(type) && (type as any)._zod.def.coerce) return input;
+  if (typeof input === 'string') return coerceString(type, input, mode);
+  // JSON has no bigint, and bigint responses are serialized as decimal strings. `JSON.parse` may
   // have rounded a number outside the safe integer range, so that is left for zod to refuse.
   if (
     instanceofZodTypeKind(type, 'bigint') &&
@@ -189,37 +686,21 @@ const coerceValue = (schema: $ZodType, input: unknown): unknown => {
   return input;
 };
 
-const unwrapZodWrappers = (type: $ZodType): $ZodType => {
-  if (
-    instanceofZodTypeKind(type, 'optional') ||
-    instanceofZodTypeKind(type, 'nullable') ||
-    instanceofZodTypeKind(type, 'default') ||
-    instanceofZodTypeKind(type, 'prefault')
-  ) {
-    return unwrapZodWrappers((type as z.ZodOptional<$ZodTypes>).unwrap());
-  }
-  if (instanceofZodTypeKind(type, 'lazy')) {
-    return unwrapZodWrappers((type as z.ZodLazy<$ZodTypes>).def.getter());
-  }
-  return type;
-};
-
-const coerceString = (type: $ZodType, value: string): unknown => {
-  // Number('') and BigInt('') are 0, but an empty parameter is not a zero.
-  if (value.trim() === '') return value;
-  if (instanceofZodTypeKind(type, 'number')) return Number(value);
-  if (instanceofZodTypeKind(type, 'date')) return new Date(value);
-  if (instanceofZodTypeKind(type, 'bigint')) {
-    try {
-      return BigInt(value);
-    } catch {
-      return value;
-    }
-  }
-  // Boolean('false') is true, so only these two strings are converted.
-  if (instanceofZodTypeKind(type, 'boolean')) {
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-  }
-  return value;
+/**
+ * Converts each string in a procedure's `input` that `schema` expects to be a number, boolean,
+ * bigint or date, because query and path parameters always arrive as strings, and each safe integer
+ * that it expects to be a bigint. Any other value, such as `null` or `true` in a JSON body, is left
+ * for the schema to validate, and so is a field declared with `z.coerce`. Objects and arrays are
+ * copied rather than changed, and the schema is not changed.
+ *
+ * `mode` selects the URL-parameter grammar (`query`, the default) or the looser JSON-body grammar,
+ * which keeps the conversions JSON clients had before the strict rules were introduced.
+ */
+export const coerceInput = (
+  schema: $ZodType,
+  input: unknown,
+  mode: CoercionMode = 'query',
+): unknown => {
+  const state = createTraversalState();
+  return coerceValue(unwrapZodInputSideInternal(schema, state), input, mode, state);
 };

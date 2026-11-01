@@ -79,29 +79,46 @@ export const generateOpenApiDocument = <TMeta = Record<string, unknown>>(
     },
   };
 
-  return createDocument({
-    openapi: opts.openApiVersion ?? '3.1.0',
-    info: {
-      title: opts.title,
-      description: opts.description,
-      version: opts.version,
-      ...(opts.contact && { contact: opts.contact }),
-      ...(opts.license && { license: opts.license }),
+  // JSON has no bigint: the response serializer writes bigints as decimal
+  // strings, so document them as strings too. The caller's override runs
+  // after this one and can change the result further.
+  const options: CreateDocumentOptions = {
+    ...opts.options,
+    override: (ctx) => {
+      if (ctx.zodSchema?._zod?.def?.type === 'bigint') {
+        ctx.jsonSchema.type = 'string';
+        ctx.jsonSchema.format = 'int64';
+      }
+      opts.options?.override?.(ctx);
     },
-    servers: [
-      {
-        url: opts.baseUrl,
+  };
+
+  return createDocument(
+    {
+      openapi: opts.openApiVersion ?? '3.1.0',
+      info: {
+        title: opts.title,
+        description: opts.description,
+        version: opts.version,
+        ...(opts.contact && { contact: opts.contact }),
+        ...(opts.license && { license: opts.license }),
       },
-    ],
-    paths: mergePaths(
-      getOpenApiPathsObject(appRouter, Object.keys(securitySchemes), opts.filter),
-      opts.paths,
-    ),
-    components: {
-      securitySchemes,
-      ...(opts.defs && { schemas: opts.defs }),
+      servers: [
+        {
+          url: opts.baseUrl,
+        },
+      ],
+      paths: mergePaths(
+        getOpenApiPathsObject(appRouter, Object.keys(securitySchemes), opts.filter),
+        opts.paths,
+      ),
+      components: {
+        securitySchemes,
+        ...(opts.defs && { schemas: opts.defs }),
+      },
+      tags: opts.tags?.map((tag) => ({ name: tag })),
+      externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
     },
-    tags: opts.tags?.map((tag) => ({ name: tag })),
-    externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
-  }, opts.options);
+    options,
+  );
 };
