@@ -1,6 +1,6 @@
 import { TRPC_ERROR_CODE_KEY } from '@trpc/server/rpc';
 import type {
-  CreateRootTypes,
+  AnyRootTypes,
   Procedure,
   ProcedureType,
   Router,
@@ -66,25 +66,21 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
 export type OpenApiProcedure = Procedure<
   ProcedureType,
   {
-    input: any;
-    output: any;
+    input: unknown;
+    output: unknown;
     meta: TRPCMeta;
   }
 >;
 
 export type OpenApiProcedureRecord = Record<string, OpenApiProcedure | RouterRecord>;
 
-export type OpenApiRouter = Router<
-  CreateRootTypes<{
-    ctx: any;
-    meta: TRPCMeta;
-    errorShape: any;
-    transformer: any;
-  }>,
-  RouterRecord
->;
+/**
+ * The router shape this library accepts: any tRPC router. Its actual context,
+ * metadata and error shape are inferred from `TRouter` at each adapter.
+ */
+export type OpenApiRouter = Router<AnyRootTypes, RouterRecord>;
 
-export type OpenApiSuccessResponse<D = any> = D;
+export type OpenApiSuccessResponse<D = unknown> = D;
 
 export interface OpenApiErrorResponse {
   message: string;
@@ -92,9 +88,16 @@ export interface OpenApiErrorResponse {
   issues?: $ZodIssue[];
 }
 
-export type OpenApiResponse<D = any> = OpenApiSuccessResponse<D> | OpenApiErrorResponse;
+export type OpenApiResponse<D = unknown> = OpenApiSuccessResponse<D> | OpenApiErrorResponse;
 
 export type NodeHTTPRequest = IncomingMessage & {
   body?: unknown;
   query?: unknown;
 };
+
+/**
+ * Requests accepted by the shared handler: Node's `IncomingMessage` for the
+ * framework adapters, and a WHATWG `Request` for the standalone and fetch
+ * adapters.
+ */
+export type OpenApiHTTPRequest = NodeHTTPRequest | (Request & { query?: unknown });

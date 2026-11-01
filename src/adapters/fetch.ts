@@ -1,19 +1,19 @@
 import { TRPCError } from '@trpc/server';
 import { FetchHandlerOptions } from '@trpc/server/adapters/fetch';
-import type { NodeHTTPCreateContextFnOptions } from '@trpc/server/adapters/node-http';
-import { IncomingMessage, ServerResponse } from 'http';
+import { ServerResponse } from 'http';
 import type { CreateDocumentOptions } from 'zod-openapi';
 
 import { OpenApiRouter } from '../types';
 import { isJsonMediaType } from '../utils/method';
 import { stripPathPrefix } from '../utils/path';
-import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
+import { type OpenApiResponseMetaFn, createOpenApiNodeHttpHandler } from './node-http';
 import { DEFAULT_MAX_BODY_SIZE, payloadTooLargeError } from './node-http/input';
 
 export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Omit<
   FetchHandlerOptions<TRouter>,
-  'batching'
+  'batching' | 'responseMeta'
 > & {
+  responseMeta?: OpenApiResponseMetaFn<TRouter>;
   req: Request;
   endpoint: `/${string}`;
   /**
@@ -161,7 +161,10 @@ const getRequestUrl = (req: Request, endpoint?: string): URL => {
   return requestUrl;
 };
 
-type RequestProxyResult = { req: Request; payloadTooLarge: boolean };
+interface RequestProxyResult {
+  req: Request;
+  payloadTooLarge: boolean;
+}
 
 const createRequestProxy = async (
   req: Request,
@@ -195,7 +198,8 @@ const createRequestProxy = async (
       // Headers are exposed as-is: callbacks see the raw values and mutations
       // reach the original `Request`. Media types are normalized by the
       // content-type checks instead.
-      return Reflect.get(target, prop, target);
+      const value = Reflect.get(target, prop, target) as unknown;
+      return value;
     },
   });
 
@@ -204,6 +208,20 @@ const createRequestProxy = async (
     payloadTooLarge: !body.isValid && isPayloadTooLargeError(body.cause),
   };
 };
+
+interface FetchResponseAdapter {
+  setHeader(key: string, value: string | readonly string[]): void;
+  statusCode: number;
+  end(body?: string): void;
+}
+
+/**
+ * The core handler's response type is Node's `ServerResponse`, but the fetch
+ * adapter resolves a WHATWG `Response` from `end`. Keep that boundary cast in
+ * one place.
+ */
+const asNodeResponse = (res: FetchResponseAdapter): ServerResponse =>
+  res as unknown as ServerResponse;
 
 export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
   opts: CreateOpenApiFetchHandlerOptions<TRouter>,
@@ -237,28 +255,24 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
 
   const { router, createContext, responseMeta, onError, options } = opts;
 
-  const openApiHttpHandler = createOpenApiNodeHttpHandler<TRouter, IncomingMessage, ServerResponse>(
-    {
-      router,
-      responseMeta,
-      onError,
-      options,
-      // The fetch adapter's `createContext` contract is tRPC's fetch one
-      // (`{ req, resHeaders, info }`), while the node handler passes a node
-      // request and response. Adapt between the two so `resHeaders` is defined.
-      createContext: createContext
-        ? ({
-            req: contextReq,
-            info,
-          }: NodeHTTPCreateContextFnOptions<IncomingMessage, ServerResponse>) =>
-            createContext({
-              req: contextReq as unknown as Request,
-              resHeaders,
-              info,
-            })
-        : undefined,
-    } as unknown as CreateOpenApiNodeHttpHandlerOptions<TRouter, IncomingMessage, ServerResponse>,
-  );
+  const openApiHttpHandler = createOpenApiNodeHttpHandler<TRouter, Request, ServerResponse>({
+    router,
+    responseMeta,
+    options,
+    onError,
+    // The core handler calls `createContext` with `{ req, res, info }`, while
+    // the fetch contract provides the response headers as well.
+    createContext: createContext
+      ? (ctxOpts) => {
+          const result: unknown = createContext({
+            req: ctxOpts.req,
+            resHeaders,
+            info: ctxOpts.info,
+          });
+          return result;
+        }
+      : undefined,
+  });
 
   return new Promise<Response>((resolve) => {
     let settled = false;
@@ -284,7 +298,7 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
         ),
       );
 
-    const res = {
+    const res: FetchResponseAdapter = {
       setHeader: (key: string, value: string | readonly string[]) => {
         if (typeof value === 'string') {
           resHeaders.set(key, value);
@@ -300,7 +314,7 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
       set statusCode(code: number) {
         statusCode = code;
       },
-      end: (body: string) => {
+      end: (body?: string) => {
         settle(
           new Response(body, {
             headers: resHeaders,
@@ -308,15 +322,13 @@ export const createOpenApiFetchHandler = async <TRouter extends OpenApiRouter>(
           }),
         );
       },
-    } as unknown as ServerResponse;
+    };
 
     try {
       // The handler promise must be observed: a throw from a callback such as
       // `onError` (e.g. accessing the proxy's `body` getter) rejects it instead
       // of calling `res.end`, and would otherwise leave this promise pending.
-      void Promise.resolve(openApiHttpHandler(req as unknown as IncomingMessage, res)).catch(
-        internalServerError,
-      );
+      void Promise.resolve(openApiHttpHandler(req, asNodeResponse(res))).catch(internalServerError);
     } catch {
       internalServerError();
     }
