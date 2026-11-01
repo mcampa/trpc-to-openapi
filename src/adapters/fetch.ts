@@ -4,6 +4,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import type { CreateDocumentOptions } from 'zod-openapi';
 
 import { OpenApiRouter } from '../types';
+import { isJsonMediaType, normalizeMediaType, sanitizeInput } from '../utils';
 import { createOpenApiNodeHttpHandler } from './node-http';
 
 export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Omit<
@@ -22,19 +23,23 @@ export type CreateOpenApiFetchHandlerOptions<TRouter extends OpenApiRouter> = Om
 const getUrlEncodedBody = async (req: Request) => {
   const params = new URLSearchParams(await req.text());
 
-  const data: Record<string, unknown> = {};
+  // A null-prototype accumulator keeps a "__proto__" form field from setting
+  // the prototype; sanitizing then drops that key from the result.
+  const data: Record<string, unknown> = Object.create(null);
 
   for (const key of params.keys()) {
     data[key] = params.getAll(key);
   }
 
-  return data;
+  return sanitizeInput(data) as Record<string, unknown>;
 };
 
 // co-body does not parse Request body correctly
 const getRequestBody = async (req: Request) => {
   try {
-    if (req.headers.get('content-type')?.includes('application/json')) {
+    const mediaType = normalizeMediaType(req.headers.get('content-type') ?? undefined);
+
+    if (isJsonMediaType(mediaType)) {
       return {
         isValid: true,
         // use JSON.parse instead of req.json() because req.json() does not throw on invalid JSON
@@ -42,7 +47,7 @@ const getRequestBody = async (req: Request) => {
       };
     }
 
-    if (req.headers.get('content-type')?.includes('application/x-www-form-urlencoded')) {
+    if (mediaType === 'application/x-www-form-urlencoded') {
       return {
         isValid: true,
         data: await getUrlEncodedBody(req),

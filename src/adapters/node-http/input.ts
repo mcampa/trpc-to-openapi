@@ -11,10 +11,10 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string 
   if (!req.query) {
     const parsedQs: Record<string, string[]> = Object.create(null);
     url.searchParams.forEach((value, key) => {
-      if (!Object.prototype.hasOwnProperty.call(parsedQs, key)) {
+      if (!parsedQs[key]) {
         parsedQs[key] = [];
       }
-      parsedQs[key]!.push(value);
+      parsedQs[key].push(value);
     });
     req.query = parsedQs;
   }
@@ -23,10 +23,6 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string 
 
   // normalize first value in array
   Object.keys(reqQuery).forEach((key) => {
-    if (!Object.prototype.hasOwnProperty.call(reqQuery, key)) {
-      return;
-    }
-
     const value = reqQuery[key];
     if (value !== undefined) {
       query[key] = Array.isArray(value) && value.length === 1 ? value[0]! : value;
@@ -40,7 +36,22 @@ const BODY_100_KB = 100_000;
 export const getBody = async (req: NodeHTTPRequest, maxBodySize = BODY_100_KB): Promise<any> => {
   if ('body' in req) {
     if (req.body instanceof ReadableStream) {
-      return new Response(req.body as ReadableStream<Buffer | Uint8Array | string | null>).json();
+      try {
+        return await new Response(
+          req.body as ReadableStream<Buffer | Uint8Array | string | null>,
+        ).json();
+      } catch (cause) {
+        // The body stream itself reports size limits as TRPCErrors; keep those.
+        if (cause instanceof TRPCError) {
+          throw cause;
+        }
+
+        throw new TRPCError({
+          message: 'Failed to parse request body',
+          code: 'PARSE_ERROR',
+          cause: cause instanceof Error ? cause : undefined,
+        });
+      }
     }
     return req.body;
   }

@@ -144,11 +144,13 @@ A procedure can accept a set of inputs via URL path parameters. You can add a pa
 
 ### Query parameters
 
-Query & path parameter inputs are always accepted as a `string`. This library converts string values to the following primitive types out of the box: `number`, `boolean` (from `"true"` or `"false"` only), `bigint` and `date`. Conversion is strict: a value that does not match the rules below is left as a string, so zod rejects it with a `400` response instead of silently coercing it.
+Query & path parameter inputs are always accepted as a `string`. This library converts string values to the following primitive types out of the box: `number`, `boolean` (from `"true"` or `"false"` only), `bigint` and `date`. Conversion for query and path parameters is strict: a value that does not match the rules below is left as a string, so zod rejects it with a `400` response instead of silently coercing it.
 
-- `number`: strict decimal strings only — an optional sign, digits with an optional fraction (`.5` and `5.` are valid) and an optional exponent (`1e3`). Hexadecimal (`0x10`), whitespace-only, `Infinity`, `NaN` and empty strings are rejected.
-- `bigint`: strict integer strings (an optional sign followed by digits). A JSON integer is converted when it is a safe integer, because the OpenAPI document describes a bigint as an integer.
-- `date`: the string is converted only when it is a valid date.
+- `number`: strict decimal strings only — an optional sign, digits with an optional fraction (`.5` and `5.` are valid) and an optional exponent (`1e3`). Hexadecimal (`0x10`), whitespace-only, `Infinity`, `NaN` and empty strings are rejected. Integers outside the safe integer range are rejected instead of being rounded.
+- `bigint`: strict integer strings (an optional sign followed by digits). A JSON integer is converted when it is a safe integer. BigInt responses are serialized as decimal strings and the generated OpenAPI document describes them as `type: string, format: int64`.
+- `date`: ISO-8601/RFC 3339 only — `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm[:ss[.sss]]` followed by `Z` or a `±HH:MM` offset. Impossible dates (`2020-02-30`), `0`, `1/1/2020` and date-times without an offset are rejected.
+
+Strings in a JSON request body keep the permissive coercion JSON clients had before the strict rules: `z.number()` uses `Number()` (so `"0x10"` becomes `16` and `" 5 "` becomes `5`), `z.bigint()` uses `BigInt()` and `z.date()` uses `new Date()`. Booleans and empty strings follow the same rules as query parameters.
 
 Empty strings, and values like `null` or `true` in a JSON body, are left for your schema to validate; use [`z.coerce`](https://github.com/colinhacks/zod#coercion-for-primitives) if you want zod's own coercion instead. If you wish to support others such as `object`, `array` etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
 
@@ -391,8 +393,8 @@ Please see [full typings here](src/types.ts).
 | `summary`            | `string`                                | A short summary of the endpoint included in the OpenAPI document.                                                              | `false`  | `undefined`             |
 | `description`        | `string`                                | A verbose description of the endpoint included in the OpenAPI document.                                                        | `false`  | `undefined`             |
 | `tags`               | `string[]`                              | A list of tags used for logical grouping of endpoints in the OpenAPI document.                                                 | `false`  | `undefined`             |
-| `requestHeaders`     | `AnyZodObject`                          | A zod object schema describing custom request headers; documented in the OpenAPI document and not validated at runtime.       | `false`  | `undefined`             |
-| `responseHeaders`    | `AnyZodObject`                          | A zod object schema describing custom response headers; documented in the OpenAPI document and not validated at runtime.      | `false`  | `undefined`             |
+| `requestHeaders`     | `AnyZodObject`                          | A zod object schema describing custom request headers; documented in the OpenAPI document and not validated at runtime.        | `false`  | `undefined`             |
+| `responseHeaders`    | `AnyZodObject`                          | A zod object schema describing custom response headers; documented in the OpenAPI document and not validated at runtime.       | `false`  | `undefined`             |
 | `successDescription` | `string`                                | A string to use as the description for a successful response.                                                                  | `false`  | `'Successful response'` |
 | `errorResponses`     | `number[] \| { [key: number]: string }` | A list of error response codes or an object of response codes and their description to add to the responses for this endpoint. | `false`  | `undefined`             |
 | `contentTypes`       | `OpenApiContentType[]`                  | A set of content types specified as accepted in the OpenAPI document.                                                          | `false`  | `['application/json']`  |

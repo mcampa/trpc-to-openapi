@@ -32,6 +32,14 @@ export const normalizeMediaType = (
   return value.split(';')[0]!.trim().toLowerCase();
 };
 
+/**
+ * Whether a normalized media type is JSON: `application/json` or a structured
+ * suffix type such as `application/json-patch+json`.
+ */
+export const isJsonMediaType = (mediaType: string | undefined): boolean => {
+  return mediaType === 'application/json' || !!mediaType?.endsWith('+json');
+};
+
 export const getRequestSignal = (
   req: NodeHTTPRequest | Request,
   res: NodeHTTPResponse,

@@ -226,6 +226,33 @@ describe('fetch adapter', () => {
     expect(onErrorMock).toHaveBeenCalledTimes(1);
   });
 
+  test('with structured JSON media types', async () => {
+    const appRouter = t.router({
+      echo: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/echo' } })
+        .input(z.object({ payload: z.string() }))
+        .output(z.object({ payload: z.string() }))
+        .mutation(({ input }) => ({ payload: input.payload })),
+    });
+
+    for (const contentType of ['application/json-patch+json', 'Application/JSON']) {
+      const req = new Request('https://localhost:3000/echo', {
+        method: 'POST',
+        body: JSON.stringify({ payload: 'hi' }),
+        headers: { 'Content-Type': contentType },
+      });
+
+      const res = await createFetchHandlerCaller({
+        router: appRouter,
+        endpoint: '/',
+        req,
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ payload: 'hi' });
+    }
+  });
+
   test('with missing input', async () => {
     const appRouter = t.router({
       echo: t.procedure

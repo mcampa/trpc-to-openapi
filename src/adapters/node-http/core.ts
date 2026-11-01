@@ -31,7 +31,9 @@ import {
   zodSupportsCoerce,
   getContentType,
   getRequestSignal,
+  isJsonMediaType,
   normalizeMediaType,
+  sanitizeInput,
 } from '../../utils';
 import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
 import { getBody, getQuery } from './input';
@@ -54,8 +56,23 @@ export type CreateOpenApiNodeHttpHandlerOptions<
 
 export type OpenApiNextFunction = () => void;
 
-const jsonStringify = (body: unknown): string =>
-  JSON.stringify(body, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
+const jsonStringify = (body: unknown): string => {
+  try {
+    // Fast path: most responses contain no bigint, so avoid the replacer cost.
+    // Note that `JSON.stringify(undefined)` returns undefined at runtime,
+    // which `res.end(undefined)` treats as a bodyless response.
+    return JSON.stringify(body);
+  } catch (cause) {
+    if (!(cause instanceof TypeError)) {
+      throw cause;
+    }
+    // `JSON.stringify` throws a TypeError for a bigint. Serialize those as
+    // decimal strings.
+    return JSON.stringify(body, (_key, value) =>
+      typeof value === 'bigint' ? value.toString() : value,
+    );
+  }
+};
 
 export const createOpenApiNodeHttpHandler = <
   TRouter extends OpenApiRouter,
@@ -124,7 +141,7 @@ export const createOpenApiNodeHttpHandler = <
       const mediaType = normalizeMediaType(contentType);
       const useBody = acceptsRequestBody(method);
 
-      if (useBody && mediaType !== 'application/json') {
+      if (useBody && !isJsonMediaType(mediaType)) {
         throw new TRPCError({
           code: 'UNSUPPORTED_MEDIA_TYPE',
           message: contentType
@@ -138,12 +155,15 @@ export const createOpenApiNodeHttpHandler = <
 
       // input should stay undefined if z.void()
       if (!instanceofZodTypeLikeVoid(unwrappedSchema)) {
-        // Use a null-prototype object so keys such as "__proto__" coming from
-        // a pre-parsed body or query string stay own properties.
-        input = Object.assign(
-          Object.create(null),
-          useBody ? await getBody(req, maxBodySize) : getQuery(req, url),
-          pathInput,
+        // Merge into a null-prototype object so a "__proto__" key coming from
+        // a pre-parsed body or query string stays an own property, then
+        // sanitize into the normal-prototype object user code expects.
+        input = sanitizeInput(
+          Object.assign(
+            Object.create(null),
+            useBody ? await getBody(req, maxBodySize) : getQuery(req, url),
+            pathInput,
+          ),
         );
       }
 
@@ -182,7 +202,7 @@ export const createOpenApiNodeHttpHandler = <
           }
         }
         // A copy, so `onError` and the error shape still get the input before conversion.
-        procedureInput = coerceInput(inputParser, input);
+        procedureInput = coerceInput(inputParser, input, useBody ? 'body' : 'query');
       }
 
       info = {

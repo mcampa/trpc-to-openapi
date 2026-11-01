@@ -590,11 +590,12 @@ describe('standalone adapter', () => {
     });
     const body = (await res.json()) as OpenApiErrorResponse;
 
-    expect(res.status).toBe(500);
+    // Malformed JSON is a client error, not an internal server error.
+    expect(res.status).toBe(400);
     expect(body).toEqual(
       expect.objectContaining({
-        message: 'Internal server error',
-        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to parse request body',
+        code: 'PARSE_ERROR',
       }),
     );
     expect(createContextMock).toHaveBeenCalledTimes(0);
@@ -1583,8 +1584,17 @@ describe('standalone adapter', () => {
       tree: { n: 1, children: [{ n: 2 }] },
       nullableNested: null,
     });
-    // Only keys the input has are copied, so an inherited name such as `toString` is not added.
-    expect(zodUtils.coerceInput(z.object({ toString: z.string().optional() }), {})).toEqual({});
+    // An absent shape key is defined as own `undefined` so an inherited name
+    // such as `toString` cannot resolve to an `Object.prototype` member.
+    expect(zodUtils.coerceInput(z.object({ toString: z.string().optional() }), {})).toEqual({
+      toString: undefined,
+    });
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        zodUtils.coerceInput(z.object({ toString: z.string().optional() }), {}) as object,
+        'toString',
+      ),
+    ).toBe(true);
     // Nested objects and arrays are copied, so the input itself is left as it arrived.
     const original = { ids: ['1'], nested: { big: '5' } };
     zodUtils.coerceInput(
