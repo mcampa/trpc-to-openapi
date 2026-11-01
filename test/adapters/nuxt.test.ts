@@ -161,6 +161,40 @@ describe('nuxt adapter', () => {
     }
   });
 
+  test('decodes path parameters exactly once after h3 has decoded them', async () => {
+    const appRouter = t.router({
+      getUser: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/users/{name}' } })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(({ input }) => input),
+    });
+
+    const openApiNuxtHandlerCaller = createOpenApiNuxtHandlerCaller({
+      router: appRouter,
+    });
+
+    {
+      // h3 hands catch-all params over in their raw form when they contain `%25`.
+      const res = await openApiNuxtHandlerCaller({
+        method: 'GET',
+        params: { trpc: 'users/foo%2520bar' },
+        url: '/api/users/foo%2520bar',
+      });
+
+      expect(res.body).toEqual({ name: 'foo%20bar' });
+    }
+    {
+      const res = await openApiNuxtHandlerCaller({
+        method: 'GET',
+        params: { trpc: 'users/100%25' },
+        url: '/api/users/100%25',
+      });
+
+      expect(res.body).toEqual({ name: '100%' });
+    }
+  });
+
   test('with invalid path', async () => {
     const appRouter = t.router({});
 

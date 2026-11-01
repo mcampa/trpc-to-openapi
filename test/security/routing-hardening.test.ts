@@ -1,4 +1,3 @@
-import { Server } from 'http';
 import { initTRPC } from '@trpc/server';
 import fetch from 'node-fetch';
 import { z } from 'zod/v4';
@@ -8,30 +7,24 @@ import {
   OpenApiRouter,
   createOpenApiHttpHandler,
   createProcedureCache,
+  getPathParameters,
   getPathRegExp,
 } from '../../src';
+import { createHttpServerWithRouter, TestHttpServer } from '../helpers/http-server';
 
 // @ts-expect-error - global fetch
 global.fetch = fetch;
 
 const t = initTRPC.meta<OpenApiMeta>().context<any>().create();
 
-let server: Server | undefined;
+let server: TestHttpServer | undefined;
 
 const startServer = <TRouter extends OpenApiRouter>(router: TRouter): string => {
-  const handler = createOpenApiHttpHandler<TRouter>({
+  server = createHttpServerWithRouter<TRouter>({
     router,
     createContext: () => ({}),
   } as any);
-
-  server = new Server((req, res) => {
-    void handler(req, res);
-  });
-  server.listen(0);
-
-  const address = server.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-  return `http://127.0.0.1:${port}`;
+  return server.url;
 };
 
 afterEach(() => {
@@ -67,6 +60,17 @@ describe('V4 - static routes must not be shadowed by parameter routes', () => {
     expect(body).toEqual({ me: true });
   });
 
+  test('a percent-encoded static route still resolves to the static route', async () => {
+    const url = startServer(createUsersRouter());
+
+    // `%6D` is the unreserved character `m`.
+    const res = await fetch(`${url}/users/%6De`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ me: true });
+  });
+
   test('a valid parameter value still resolves to the parameter route', async () => {
     const url = startServer(createUsersRouter());
 
@@ -77,7 +81,7 @@ describe('V4 - static routes must not be shadowed by parameter routes', () => {
     expect(body).toEqual({ id: userId });
   });
 
-  test('prefers the parameter route with more static segments', () => {
+  test('prefers the parameter route with more literal characters', () => {
     const appRouter = t.router({
       generic: t.procedure
         .meta({ openapi: { method: 'GET', path: '/{section}/{slug}' } })
@@ -98,6 +102,38 @@ describe('V4 - static routes must not be shadowed by parameter routes', () => {
     expect(resolved?.pathInput).toEqual({ name: 'report', part: 'final' });
   });
 
+  test.each([
+    ['mixed route registered first', true],
+    ['mixed route registered last', false],
+  ])('a mixed-segment route beats a catch-all route (%s)', (_label, mixedFirst) => {
+    const mixed = t.procedure
+      .meta({ openapi: { method: 'GET', path: '/files/{name}.{ext}' } })
+      .input(z.object({ name: z.string(), ext: z.string() }))
+      .output(z.object({ name: z.string(), ext: z.string() }))
+      .query(({ input }) => input);
+    const catchAll = t.procedure
+      .meta({ openapi: { method: 'GET', path: '/files/{path}' } })
+      .input(z.object({ path: z.string() }))
+      .output(z.object({ path: z.string() }))
+      .query(({ input }) => input);
+
+    const appRouter = t.router(mixedFirst ? { mixed, catchAll } : { catchAll, mixed });
+    const cache = createProcedureCache(appRouter);
+
+    expect(cache('GET', '/files/report.pdf')).toEqual(
+      expect.objectContaining({
+        procedure: expect.objectContaining({ path: 'mixed' }),
+        pathInput: { name: 'report', ext: 'pdf' },
+      }),
+    );
+    expect(cache('GET', '/files/readme')).toEqual(
+      expect.objectContaining({
+        procedure: expect.objectContaining({ path: 'catchAll' }),
+        pathInput: { path: 'readme' },
+      }),
+    );
+  });
+
   test('warns about overlapping patterns of the same method in non-production', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
@@ -106,6 +142,39 @@ describe('V4 - static routes must not be shadowed by parameter routes', () => {
     const warnings = warnSpy.mock.calls.flat().join(' ');
     expect(warnings).toContain('/users/{id}');
     expect(warnings).toContain('/users/me');
+  });
+
+  test('warns about overlapping mixed-segment patterns', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const appRouter = t.router({
+      first: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/mix/{a}.json' } })
+        .input(z.object({ a: z.string() }))
+        .output(z.object({ a: z.string() }))
+        .query(({ input }) => input),
+      second: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/mix/{b}.json' } })
+        .input(z.object({ b: z.string() }))
+        .output(z.object({ b: z.string() }))
+        .query(({ input }) => input),
+    });
+
+    createProcedureCache(appRouter);
+
+    const warnings = warnSpy.mock.calls.flat().join(' ');
+    expect(warnings).toContain('/mix/{a}.json');
+    expect(warnings).toContain('/mix/{b}.json');
+  });
+
+  test('warns only once per router across repeated handler creations', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const appRouter = createUsersRouter();
+
+    createOpenApiHttpHandler({ router: appRouter });
+    createOpenApiHttpHandler({ router: appRouter });
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
   test('does not warn about overlapping patterns in production', () => {
@@ -125,57 +194,100 @@ describe('V4 - static routes must not be shadowed by parameter routes', () => {
 
 describe('V7 - path patterns must be escaped before compiling', () => {
   test('escapes regex metacharacters in static segments', () => {
-    const { regexp, paramNames } = getPathRegExp('/c++');
+    const regexp = getPathRegExp('/c++');
 
-    expect(paramNames).toEqual([]);
+    expect(regexp.paramNames).toEqual([]);
     expect(regexp.test('/c++')).toBe(true);
     expect(regexp.test('/cpp')).toBe(false);
   });
 
   test('does not interpret dots or brackets as regex syntax', () => {
-    const dotted = getPathRegExp('/v1.0/users').regexp;
+    const dotted = getPathRegExp('/v1.0/users');
     expect(dotted.test('/v1.0/users')).toBe(true);
     expect(dotted.test('/v1X0/users')).toBe(false);
 
-    const bracketed = getPathRegExp('/users/[id]').regexp;
+    const bracketed = getPathRegExp('/users/[id]');
     expect(bracketed.test('/users/[id]')).toBe(true);
     expect(bracketed.test('/users/i')).toBe(false);
   });
 
   test('supports parameter names that are not valid capture group names', () => {
-    const { regexp, paramNames } = getPathRegExp('/users/{user-id}');
+    const regexp = getPathRegExp('/users/{user-id}');
 
-    expect(paramNames).toEqual(['user-id']);
+    expect(regexp.paramNames).toEqual(['user-id']);
     expect(regexp.exec('/users/abc-123')?.[1]).toBe('abc-123');
   });
 
   test('maps positional capture groups to parameter names by index', () => {
-    const { regexp, paramNames } = getPathRegExp('/users/{userId}/posts/{postId}');
+    const regexp = getPathRegExp('/users/{userId}/posts/{postId}');
 
-    expect(paramNames).toEqual(['userId', 'postId']);
+    expect(regexp.paramNames).toEqual(['userId', 'postId']);
     const match = regexp.exec('/users/42/posts/99');
     expect(match?.[1]).toBe('42');
     expect(match?.[2]).toBe('99');
   });
 
   test('captures a parameter followed by a literal suffix', () => {
-    const { regexp, paramNames } = getPathRegExp('/files/{name}.json');
+    const regexp = getPathRegExp('/files/{name}.json');
 
-    expect(paramNames).toEqual(['name']);
+    expect(regexp.paramNames).toEqual(['name']);
     expect(regexp.exec('/files/report.json')?.[1]).toBe('report');
     expect(regexp.test('/files/report.json.bak')).toBe(false);
   });
 
-  test('uses non-greedy matching to prefer the earliest literal suffix', () => {
-    const { regexp } = getPathRegExp('/x/{first}-{second}');
+  test('uses greedy matching so multi-parameter segments split at the last delimiter', () => {
+    const regexp = getPathRegExp('/x/{first}-{second}');
 
     const match = regexp.exec('/x/a-b-c');
-    expect(match?.[1]).toBe('a');
-    expect(match?.[2]).toBe('b-c');
+    expect(match?.[1]).toBe('a-b');
+    expect(match?.[2]).toBe('c');
+  });
+
+  test('splits /posts/{slug}-{id} like the pre-existing named-group implementation', () => {
+    const regexp = getPathRegExp('/posts/{slug}-{id}');
+
+    const match = regexp.exec('/posts/hello-world-123');
+    expect(match?.[1]).toBe('hello-world');
+    expect(match?.[2]).toBe('123');
   });
 
   test('rejects empty parameter names', () => {
     expect(() => getPathRegExp('/users/{}')).toThrow(/empty parameter name/i);
+  });
+
+  test('rejects duplicate parameter names', () => {
+    expect(() => getPathRegExp('/users/{id}/posts/{id}')).toThrow(/duplicate parameter name/i);
+  });
+
+  test('rejects duplicate parameter names when creating a handler', () => {
+    const appRouter = t.router({
+      duplicate: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/users/{id}/posts/{id}' } })
+        .input(z.object({ id: z.string() }))
+        .output(z.object({ id: z.string() }))
+        .query(({ input }) => input),
+    });
+
+    expect(() => createOpenApiHttpHandler({ router: appRouter })).toThrow(
+      /duplicate parameter name/i,
+    );
+  });
+
+  test('uses the shared tokenizer for generator path parameters', () => {
+    expect(getPathParameters('/files/{name}.{ext}')).toEqual(['name', 'ext']);
+    expect(() => getPathParameters('/users/{}')).toThrow(/empty parameter name/i);
+  });
+
+  test('rejects empty parameter names when creating a handler', () => {
+    const appRouter = t.router({
+      empty: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/users/{}' } })
+        .input(z.object({}))
+        .output(z.object({}))
+        .query(() => ({})),
+    });
+
+    expect(() => createOpenApiHttpHandler({ router: appRouter })).toThrow(/empty parameter name/i);
   });
 
   test('creates a handler for literal paths containing regex metacharacters', async () => {
@@ -266,7 +378,7 @@ describe('V8 - path parameters must be URL-decoded', () => {
         .query(({ input }) => ({ name: input.name })),
     });
 
-  test('decodes encoded slashes after matching on the raw path', async () => {
+  test('keeps encoded slashes encoded after matching on the raw path', async () => {
     const url = startServer(createUserRouter());
 
     const res = await fetch(`${url}/users/..%2F..`, {
@@ -277,7 +389,17 @@ describe('V8 - path parameters must be URL-decoded', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ id: '../..' });
+    expect(body).toEqual({ id: '..%2F..' });
+  });
+
+  test('keeps encoded backslashes encoded', async () => {
+    const url = startServer(createUserRouter());
+
+    const res = await fetch(`${url}/users/..%5C..`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ name: '..%5C..' });
   });
 
   test('decodes percent-encoded spaces', async () => {
@@ -290,6 +412,16 @@ describe('V8 - path parameters must be URL-decoded', () => {
     expect(body).toEqual({ name: 'john doe' });
   });
 
+  test('decodes a doubly encoded space only once', async () => {
+    const url = startServer(createUserRouter());
+
+    const res = await fetch(`${url}/users/foo%2520bar`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ name: 'foo%20bar' });
+  });
+
   test('returns a clean 400 for malformed percent-encoding', async () => {
     const url = startServer(createUserRouter());
 
@@ -298,5 +430,23 @@ describe('V8 - path parameters must be URL-decoded', () => {
 
     expect(res.status).toBe(400);
     expect(body.code).toBe('BAD_REQUEST');
+  });
+});
+
+describe('V9 - path parameter names must be preserved', () => {
+  test('preserves a parameter named __proto__ in the resolved path input', () => {
+    const appRouter = t.router({
+      proto: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/proto/{__proto__}' } })
+        .input(z.object({}))
+        .output(z.object({}))
+        .query(() => ({})),
+    });
+
+    const resolved = createProcedureCache(appRouter)('GET', '/proto/value');
+
+    expect(resolved?.procedure.path).toBe('proto');
+    expect(Object.prototype.hasOwnProperty.call(resolved?.pathInput, '__proto__')).toBe(true);
+    expect(Reflect.get(resolved!.pathInput, '__proto__')).toBe('value');
   });
 });

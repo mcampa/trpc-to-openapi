@@ -169,6 +169,41 @@ describe('next adapter', () => {
     }
   });
 
+  test('decodes path parameters exactly once after Next has decoded them', async () => {
+    const appRouter = t.router({
+      getUser: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/users/{name}' } })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(({ input }) => input),
+    });
+
+    const openApiNextHandlerCaller = createOpenApiNextHandlerCaller({
+      router: appRouter,
+    });
+
+    {
+      // A raw request for `/api/users/foo%2520bar` reaches Next as `foo%20bar`.
+      const res = await openApiNextHandlerCaller({
+        method: 'GET',
+        query: { trpc: ['users', 'foo%20bar'] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ name: 'foo%20bar' });
+    }
+    {
+      // A raw request for `/api/users/100%25` reaches Next as `100%`.
+      const res = await openApiNextHandlerCaller({
+        method: 'GET',
+        query: { trpc: 'users/100%' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ name: '100%' });
+    }
+  });
+
   test('with invalid path', async () => {
     const appRouter = t.router({});
 

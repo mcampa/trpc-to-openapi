@@ -1,7 +1,5 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { TRPCError, initTRPC } from '@trpc/server';
-import { createHTTPHandler } from '@trpc/server/adapters/standalone';
-import { Server } from 'http';
 import fetch from 'node-fetch';
 import superjson from 'superjson';
 import { z } from 'zod/v4';
@@ -14,6 +12,7 @@ import {
   createOpenApiHttpHandler,
 } from '../../src';
 import * as zodUtils from '../../src/utils/zod';
+import { createHttpServerWithRouter, TestHttpServer } from '../helpers/http-server';
 
 // @ts-expect-error - global fetch
 global.fetch = fetch;
@@ -28,12 +27,12 @@ const clearMocks = () => {
   onErrorMock.mockClear();
 };
 
-let server: Server;
+let server: TestHttpServer | undefined;
 
-const createHttpServerWithRouter = <TRouter extends OpenApiRouter>(
+const startHttpServerWithRouter = <TRouter extends OpenApiRouter>(
   handlerOpts: CreateOpenApiHttpHandlerOptions<TRouter>,
 ) => {
-  const openApiHttpHandler = createOpenApiHttpHandler<TRouter>({
+  server = createHttpServerWithRouter<TRouter>({
     router: handlerOpts.router,
     createContext: handlerOpts.createContext ?? createContextMock,
     responseMeta: handlerOpts.responseMeta ?? responseMetaMock,
@@ -41,31 +40,8 @@ const createHttpServerWithRouter = <TRouter extends OpenApiRouter>(
     maxBodySize: handlerOpts.maxBodySize,
     options: handlerOpts.options,
   } as any);
-  const httpHandler = createHTTPHandler<TRouter>({
-    router: handlerOpts.router,
-    createContext: handlerOpts.createContext ?? createContextMock,
-    responseMeta: handlerOpts.responseMeta ?? responseMetaMock,
-    onError: handlerOpts.onError ?? onErrorMock,
-    maxBodySize: handlerOpts.maxBodySize,
-  } as any);
 
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  server = new Server((req, res) => {
-    if (req.url!.startsWith('/trpc')) {
-      req.url = req.url!.replace('/trpc', '');
-      return httpHandler(req, res);
-    }
-    return openApiHttpHandler(req, res);
-  });
-
-  server.listen(0);
-  const port = (server.address() as any).port as number;
-  const url = `http://localhost:${port}`;
-
-  return {
-    url,
-    close: () => server.close(),
-  };
+  return server;
 };
 
 const t = initTRPC.meta<OpenApiMeta>().context<any>().create();
@@ -124,7 +100,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'pong' as const),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -147,7 +123,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'pong' as const),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -170,7 +146,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -210,7 +186,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -242,7 +218,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -278,7 +254,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -319,7 +295,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'fail'),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -356,7 +332,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -402,7 +378,7 @@ describe('standalone adapter', () => {
         .mutation(() => 'pong' as const),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -445,7 +421,7 @@ describe('standalone adapter', () => {
         .query(() => undefined),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -479,7 +455,7 @@ describe('standalone adapter', () => {
         .query(({ input, ctx }) => ({ payload: input.payload, context: ctx })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       createContext: (): Context => ({ id: 1234567890 }),
       router: appRouter,
     });
@@ -507,7 +483,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
       responseMeta: () => ({ status: 202, headers: { 'x-custom': 'custom header' } }),
     });
@@ -538,7 +514,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -557,7 +533,7 @@ describe('standalone adapter', () => {
   test('with warmup request', async () => {
     const appRouter = t.router({});
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -578,7 +554,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input.payload })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -613,7 +589,7 @@ describe('standalone adapter', () => {
 
     const requestBody = JSON.stringify({ payload: 'Lily' });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
       maxBodySize: requestBody.length,
     });
@@ -666,7 +642,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -704,7 +680,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ greeting: `Hello ${input.name.join(', ')}!` })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -734,7 +710,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ greeting: `Hello ${input.name}!` })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -789,7 +765,7 @@ describe('standalone adapter', () => {
         })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -845,7 +821,7 @@ describe('standalone adapter', () => {
         .query(() => ({})),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -879,7 +855,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ payload: input })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -955,7 +931,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => input),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -981,7 +957,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => input),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1020,7 +996,7 @@ describe('standalone adapter', () => {
         }),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1090,7 +1066,7 @@ describe('standalone adapter', () => {
         }),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1136,7 +1112,7 @@ describe('standalone adapter', () => {
       }),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1186,7 +1162,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ fullName: `${input.firstName} ${input.lastName}` })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1213,7 +1189,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ result: input.value.join('XXX') })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1248,7 +1224,7 @@ describe('standalone adapter', () => {
           .query(({ input }) => ({ result: input.number + 1 })),
       });
 
-      const { url } = createHttpServerWithRouter({
+      const { url } = startHttpServerWithRouter({
         router: appRouter,
       });
 
@@ -1284,7 +1260,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ result: input.number + 1 })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1358,7 +1334,7 @@ describe('standalone adapter', () => {
         })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
     const post = (body: unknown) =>
@@ -1415,7 +1391,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => input),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1483,7 +1459,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => input),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1555,7 +1531,7 @@ describe('standalone adapter', () => {
         })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1612,7 +1588,7 @@ describe('standalone adapter', () => {
         .mutation(({ input }) => ({ isAdmin: input.isAdmin })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1644,7 +1620,7 @@ describe('standalone adapter', () => {
         }),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 
@@ -1669,7 +1645,7 @@ describe('standalone adapter', () => {
         .query(({ input }) => ({ result: input.payload.join(' ') })),
     });
 
-    const { url } = createHttpServerWithRouter({
+    const { url } = startHttpServerWithRouter({
       router: appRouter,
     });
 

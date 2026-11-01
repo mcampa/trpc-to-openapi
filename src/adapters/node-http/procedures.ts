@@ -1,39 +1,54 @@
 import { TRPCError } from '@trpc/server';
 import { OpenApiMethod, OpenApiProcedure, OpenApiRouter } from '../../types';
-import { getPathRegExp, normalizePath, forEachOpenApiProcedure } from '../../utils';
+import {
+  decodePathParameter,
+  decodeUnreservedPathEscapes,
+  forEachOpenApiProcedure,
+  getPathRegExp,
+  normalizePath,
+  tokenizePath,
+} from '../../utils';
 
-interface ProcedureCacheEntry {
+export interface ProcedureCacheEntry {
   type: 'query' | 'mutation';
   path: string;
   procedure: OpenApiProcedure;
   openApiPath: string;
-  regexp: RegExp;
+  regexp: ReturnType<typeof getPathRegExp>;
   paramNames: string[];
   segments: string[];
   order: number;
   paramCount: number;
-  staticSegmentCount: number;
+  literalCharCount: number;
 }
+
+export interface ResolvedProcedure {
+  procedure: ProcedureCacheEntry;
+  pathInput: Record<string, string>;
+}
+
+export type ProcedureMatcher = (
+  method: OpenApiMethod | 'HEAD',
+  path: string,
+) => ResolvedProcedure | undefined;
 
 const getPathSegments = (path: string): string[] => path.split('/').filter((segment) => segment);
 
-const isParameterSegment = (segment: string): boolean => /^\{[^{}]+\}$/.test(segment);
+// Any segment containing a parameter marker can collide with another
+// parameterized segment, including mixed ones such as `{name}.{ext}`.
+const isParameterSegment = (segment: string): boolean => segment.includes('{');
 
 const getPathSpecificity = (path: string) => {
   const segments = getPathSegments(path);
-  let paramCount = 0;
-  let staticSegmentCount = 0;
+  let literalCharCount = 0;
 
-  for (const segment of segments) {
-    const params = segment.match(/\{[^{}]*\}/g);
-    if (params) {
-      paramCount += params.length;
-    } else {
-      staticSegmentCount += 1;
+  for (const token of tokenizePath(path)) {
+    if (token.type === 'literal') {
+      literalCharCount += token.value.length;
     }
   }
 
-  return { segments, paramCount, staticSegmentCount };
+  return { segments, literalCharCount };
 };
 
 const pathsOverlap = (aSegments: string[], bSegments: string[]): boolean => {
@@ -52,13 +67,13 @@ const pathsOverlap = (aSegments: string[], bSegments: string[]): boolean => {
 };
 
 const compareSpecificity = (a: ProcedureCacheEntry, b: ProcedureCacheEntry): number => {
-  // Static routes (no parameters) win over parameterized routes.
+  // Routes with more literal characters are more constrained, so they win.
+  if (a.literalCharCount !== b.literalCharCount) {
+    return b.literalCharCount - a.literalCharCount;
+  }
+  // Among equally constrained routes, prefer the one with fewer parameters.
   if (a.paramCount !== b.paramCount) {
     return a.paramCount - b.paramCount;
-  }
-  // Among equally parameterized routes, prefer more static segments.
-  if (a.staticSegmentCount !== b.staticSegmentCount) {
-    return b.staticSegmentCount - a.staticSegmentCount;
   }
   // Registration order is the stable tie-break.
   return a.order - b.order;
@@ -85,7 +100,14 @@ const warnAboutOverlappingPaths = (
   }
 };
 
-export const createProcedureCache = (router: OpenApiRouter) => {
+const procedureCacheByRouter = new WeakMap<OpenApiRouter, ProcedureMatcher>();
+
+export const createProcedureCache = (router: OpenApiRouter): ProcedureMatcher => {
+  const cached = procedureCacheByRouter.get(router);
+  if (cached) {
+    return cached;
+  }
+
   const procedureCache = new Map<OpenApiMethod | 'HEAD', ProcedureCacheEntry[]>();
 
   forEachOpenApiProcedure(
@@ -97,8 +119,8 @@ export const createProcedureCache = (router: OpenApiRouter) => {
       const { method } = openapi;
       const entries = procedureCache.get(method) ?? [];
       const path = normalizePath(openapi.path);
-      const { regexp, paramNames } = getPathRegExp(path);
-      const { segments, paramCount, staticSegmentCount } = getPathSpecificity(path);
+      const regexp = getPathRegExp(path);
+      const { segments, literalCharCount } = getPathSpecificity(path);
 
       entries.push({
         type: procedure._def.type,
@@ -106,11 +128,11 @@ export const createProcedureCache = (router: OpenApiRouter) => {
         procedure,
         openApiPath: path,
         regexp,
-        paramNames,
+        paramNames: regexp.paramNames,
         segments,
         order: entries.length,
-        paramCount,
-        staticSegmentCount,
+        paramCount: regexp.paramNames.length,
+        literalCharCount,
       });
       procedureCache.set(method, entries);
     },
@@ -121,24 +143,29 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     warnAboutOverlappingPaths(method, entries);
   }
 
-  return (method: OpenApiMethod | 'HEAD', path: string) => {
+  const getProcedure: ProcedureMatcher = (method, path) => {
     const procedureMethodCache = procedureCache.get(method);
     if (!procedureMethodCache) {
       return undefined;
     }
 
+    // Decode unreserved escapes before matching so an encoded static route
+    // (for example `/users/%6De`) cannot fall through to a parameter route.
+    const matchablePath = decodeUnreservedPathEscapes(path);
+
     for (const entry of procedureMethodCache) {
-      const match = entry.regexp.exec(path);
+      const match = entry.regexp.exec(matchablePath);
       if (!match) {
         continue;
       }
 
-      const pathInput: Record<string, string> = {};
+      // Matching happened on the raw pathname, so encoded slashes stay inside
+      // a single segment and are decoded only after routing. A null prototype
+      // preserves arbitrary parameter names such as `__proto__`.
+      const pathInput: Record<string, string> = Object.create(null) as Record<string, string>;
       entry.paramNames.forEach((name, index) => {
-        // Matching happened on the raw pathname, so encoded slashes stay
-        // inside a single segment and are decoded only after routing.
         try {
-          pathInput[name] = decodeURIComponent(match[index + 1] ?? '');
+          pathInput[name] = decodePathParameter(match[index + 1] ?? '');
         } catch {
           throw new TRPCError({
             message: `Invalid URL encoding in path parameter "${name}"`,
@@ -152,4 +179,9 @@ export const createProcedureCache = (router: OpenApiRouter) => {
 
     return undefined;
   };
+
+  // Memoized per router: the fetch adapter constructs a handler on every
+  // request, so sorting and overlap warnings must not run per request.
+  procedureCacheByRouter.set(router, getProcedure);
+  return getProcedure;
 };

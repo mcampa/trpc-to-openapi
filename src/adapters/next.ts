@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { OpenApiErrorResponse, OpenApiRouter } from '../types';
-import { normalizePath } from '../utils';
+import { encodePathSegments, normalizePath } from '../utils';
 import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
 
 export type CreateOpenApiNextHandlerOptions<TRouter extends OpenApiRouter> =
@@ -14,14 +14,14 @@ export const createOpenApiNextHandler = <TRouter extends OpenApiRouter>(
   const openApiHttpHandler = createOpenApiNodeHttpHandler(opts);
 
   return async (req: NextApiRequest, res: NextApiResponse) => {
-    let pathname: string | null = null;
+    let pathSegments: string[] | null = null;
     if (typeof req.query.trpc === 'string') {
-      pathname = req.query.trpc;
+      pathSegments = req.query.trpc.split('/');
     } else if (Array.isArray(req.query.trpc)) {
-      pathname = req.query.trpc.join('/');
+      pathSegments = req.query.trpc;
     }
 
-    if (pathname === null) {
+    if (pathSegments === null) {
       const error = new TRPCError({
         message: 'Query "trpc" not found - is the `trpc-to-openapi` file named `[...trpc].ts`?',
         code: 'INTERNAL_SERVER_ERROR',
@@ -53,7 +53,9 @@ export const createOpenApiNextHandler = <TRouter extends OpenApiRouter>(
       });
     }
 
-    req.url = normalizePath(pathname);
+    // Next has already decoded each catch-all segment, so re-encode them and
+    // let the shared handler decode exactly once.
+    req.url = normalizePath(encodePathSegments(pathSegments));
     await openApiHttpHandler(req, res);
   };
 };

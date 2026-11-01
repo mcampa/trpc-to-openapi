@@ -26,11 +26,7 @@ export const createOpenApiNuxtHandler = <TRouter extends OpenApiRouter>(
 
     const params = event.context.params;
     if (params?.trpc) {
-      if (!params.trpc.includes('/')) {
-        pathname = params.trpc;
-      } else {
-        pathname = params.trpc;
-      }
+      pathname = params.trpc;
     }
 
     if (pathname === null) {
@@ -60,6 +56,9 @@ export const createOpenApiNuxtHandler = <TRouter extends OpenApiRouter>(
     }
 
     (event.node.req as NuxtRequest).query = getQuery(event);
+    // h3 has already decoded route params but keeps `%2F` (and leaves the raw
+    // path when it contains `%25`) encoded, which is the shape the shared
+    // handler expects before decoding each capture exactly once.
     event.node.req.url = normalizePath(pathname);
     await openApiHttpHandler(event.node.req, event.node.res);
   });
