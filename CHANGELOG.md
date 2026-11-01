@@ -7,6 +7,7 @@
   - fix: harden the fetch adapter and share URL/content-type handling across adapters ([#176](https://github.com/mcampa/trpc-to-openapi/pull/176)). Endpoint stripping only removes leading path segments (fixes 404s when the host starts with the endpoint), `maxBodySize` is enforced while streaming (including void-input and `DELETE` routes) and validated at startup, opaque-origin requests no longer throw, an `onError` that reads `req.body` no longer hangs the request, and Fastify strips its prefix and `basePath` on segment boundaries.
   - fix: emit `requestHeaders` for procedures without input, support `Headers` instances in `responseMeta`, pass `resHeaders` to the fetch adapter's `createContext`, and document `responseHeaders` as applying to the success response only ([#178](https://github.com/mcampa/trpc-to-openapi/pull/178)).
   - docs: clarify that `meta.openapi.requestHeaders` and `responseHeaders` are documentation-only and are not validated or enforced at runtime ([#174](https://github.com/mcampa/trpc-to-openapi/pull/174)).
+  - refactor: replace unsafe `any` types and casts across the adapters, generator and zod helpers with precise types and runtime checks ([#180](https://github.com/mcampa/trpc-to-openapi/pull/180)). Adapter callback types (`createContext`, `onError`, `responseMeta`), `OpenApiRouter` and `OpenApiProcedure` are now accurate; the standalone adapter types `createContext` with the `Request` it actually receives, and literal schemas are read through their `values` array, so multi-value literals work.
 
 - v3.3.3
 
