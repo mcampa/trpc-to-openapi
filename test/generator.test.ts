@@ -435,7 +435,7 @@ describe('generator', () => {
               "example": Object {
                 "code": "BAD_REQUEST",
                 "issues": Array [],
-                "message": "Invalid input data",
+                "message": "Bad request",
               },
               "properties": Object {
                 "code": Object {
@@ -462,7 +462,7 @@ describe('generator', () => {
                 },
                 "message": Object {
                   "description": "The error message",
-                  "example": "Invalid input data",
+                  "example": "Bad request",
                   "type": "string",
                 },
               },
@@ -470,7 +470,7 @@ describe('generator', () => {
                 "message",
                 "code",
               ],
-              "title": "Invalid input data error (400)",
+              "title": "Bad request error (400)",
               "type": "object",
             },
             "error.FORBIDDEN": Object {
@@ -479,7 +479,7 @@ describe('generator', () => {
               "example": Object {
                 "code": "FORBIDDEN",
                 "issues": Array [],
-                "message": "Insufficient access",
+                "message": "Forbidden",
               },
               "properties": Object {
                 "code": Object {
@@ -506,7 +506,7 @@ describe('generator', () => {
                 },
                 "message": Object {
                   "description": "The error message",
-                  "example": "Insufficient access",
+                  "example": "Forbidden",
                   "type": "string",
                 },
               },
@@ -514,7 +514,7 @@ describe('generator', () => {
                 "message",
                 "code",
               ],
-              "title": "Insufficient access error (403)",
+              "title": "Forbidden error (403)",
               "type": "object",
             },
             "error.INTERNAL_SERVER_ERROR": Object {
@@ -611,7 +611,7 @@ describe('generator', () => {
               "example": Object {
                 "code": "UNAUTHORIZED",
                 "issues": Array [],
-                "message": "Authorization not provided",
+                "message": "Unauthorized",
               },
               "properties": Object {
                 "code": Object {
@@ -638,7 +638,7 @@ describe('generator', () => {
                 },
                 "message": Object {
                   "description": "The error message",
-                  "example": "Authorization not provided",
+                  "example": "Unauthorized",
                   "type": "string",
                 },
               },
@@ -646,7 +646,7 @@ describe('generator', () => {
                 "message",
                 "code",
               ],
-              "title": "Authorization not provided error (401)",
+              "title": "Unauthorized error (401)",
               "type": "object",
             },
           },
@@ -3647,5 +3647,47 @@ describe('generator', () => {
     });
 
     expect(() => generateOpenApiDocument(appRouter, defaultDocOpts)).not.toThrow();
+  });
+
+  test("keeps each operation's custom error response description", () => {
+    const appRouter = t.router({
+      createUser: t.procedure
+        .meta({
+          openapi: {
+            method: 'POST',
+            path: '/users',
+            errorResponses: { 409: 'User already exists' },
+          },
+        })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ id: z.string() }))
+        .mutation(() => ({ id: '1' })),
+      createTeam: t.procedure
+        .meta({
+          openapi: {
+            method: 'POST',
+            path: '/teams',
+            errorResponses: { 409: 'Team already exists' },
+          },
+        })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ id: z.string() }))
+        .mutation(() => ({ id: '1' })),
+    });
+
+    const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+
+    const userConflict = openApiDocument.paths!['/users']!.post!.responses!['409'];
+    const teamConflict = openApiDocument.paths!['/teams']!.post!.responses!['409'];
+    expect(userConflict.description).toBe('User already exists');
+    expect(teamConflict.description).toBe('Team already exists');
+
+    // Both operations share one error component, so it must not carry either operation's message.
+    const ref = '#/components/schemas/error.CONFLICT';
+    expect(userConflict.content['application/json'].schema.$ref).toBe(ref);
+    expect(teamConflict.content['application/json'].schema.$ref).toBe(ref);
+    const component = openApiDocument.components!.schemas!['error.CONFLICT'] as any;
+    expect(JSON.stringify(component)).not.toContain('already exists');
+    expect(component.title).toBe('Conflict error (409)');
   });
 });

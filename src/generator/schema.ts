@@ -196,54 +196,55 @@ export const getRequestBodyObject = (
 export const hasInputs = (schema: unknown) =>
   instanceofZodType(schema) && !instanceofZodTypeLikeVoid(unwrapZodType(schema, true));
 
-const errorResponseObjectByCode: Record<string, ZodOpenApiResponseObject> = {};
+// The error schema is registered as a shared component (`error.<code>`), and zod only allows one
+// schema per id, so it is built once per code. It must therefore not carry any operation-specific
+// message: that only goes in the response description, which is built per operation.
+const errorSchemaByCode: Partial<Record<TRPCError['code'], z.ZodType>> = {};
+
+const errorSchema = (code: TRPCError['code']): z.ZodType => {
+  const message = TRPC_ERROR_CODE_MESSAGE[code];
+  errorSchemaByCode[code] ??= z
+    .object({
+      message: z.string().meta({
+        description: 'The error message',
+        example: message,
+      }),
+      code: z.string().meta({
+        description: 'The error code',
+        example: code,
+      }),
+      issues: z
+        .array(z.object({ message: z.string() }))
+        .optional()
+        .meta({
+          description: 'An array of issues that were responsible for the error',
+          example: [],
+        }),
+    })
+    .meta({
+      title: `${message} error (${TRPC_ERROR_CODE_HTTP_STATUS[code] ?? 500})`,
+      description: 'The error information',
+      example: {
+        code,
+        message,
+        issues: [],
+      },
+      id: `error.${code}`,
+    });
+  return errorSchemaByCode[code];
+};
 
 export const errorResponseObject = (
   code: TRPCError['code'] = 'INTERNAL_SERVER_ERROR',
   message?: string,
-  issues?: { message: string }[],
-): ZodOpenApiResponseObject => {
-  if (!errorResponseObjectByCode[code]) {
-    errorResponseObjectByCode[code] = {
-      description: message ?? 'An error response',
-      content: {
-        'application/json': {
-          schema: z
-            .object({
-              message: z.string().meta({
-                description: 'The error message',
-                example: message ?? 'Internal server error',
-              }),
-              code: z.string().meta({
-                description: 'The error code',
-                example: code ?? 'INTERNAL_SERVER_ERROR',
-              }),
-              issues: z
-                .array(z.object({ message: z.string() }))
-                .optional()
-                .meta({
-                  description: 'An array of issues that were responsible for the error',
-                  example: issues ?? [],
-                }),
-            })
-            .meta({
-              title: `${message ?? 'Internal server'} error (${
-                TRPC_ERROR_CODE_HTTP_STATUS[code] ?? 500
-              })`,
-              description: 'The error information',
-              example: {
-                code: code ?? 'INTERNAL_SERVER_ERROR',
-                message: message ?? 'Internal server error',
-                issues: issues ?? [],
-              },
-              id: `error.${code}`,
-            }),
-        },
-      },
-    };
-  }
-  return errorResponseObjectByCode[code];
-};
+): ZodOpenApiResponseObject => ({
+  description: message ?? 'An error response',
+  content: {
+    'application/json': {
+      schema: errorSchema(code),
+    },
+  },
+});
 
 export const errorResponseFromStatusCode = (status: number) => {
   const code = HTTP_STATUS_TRPC_ERROR_CODE[status];
