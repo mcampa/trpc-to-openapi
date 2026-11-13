@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
-    "nuxt": "3.19.3"
+    "nuxt": "4.6.3"
   },
   "dependencies": {
     "@trpc/server": "^11.1.0",
