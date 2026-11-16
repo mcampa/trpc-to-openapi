@@ -1,5 +1,5 @@
 import { initTRPC } from '@trpc/server';
-import fastify from 'fastify';
+import fastify, { FastifyReply, FastifyRequest } from 'fastify';
 import { request as httpRequest } from 'http';
 import fetch from 'node-fetch';
 import { z } from 'zod/v4';
@@ -307,5 +307,23 @@ describe('fastify adapter', () => {
     }
 
     await close();
+  });
+});
+
+describe('CreateOpenApiFastifyPluginOptions types', () => {
+  test('accepts Fastify-typed createContext and onError', () => {
+    const t = initTRPC
+      .meta<OpenApiMeta>()
+      .context<{ req: FastifyRequest; res: FastifyReply }>()
+      .create();
+    const router = t.router({});
+    const options: CreateOpenApiFastifyPluginOptions<typeof router> = {
+      router,
+      createContext: ({ req, res }) => ({ req, res }),
+      onError: ({ req }) => void req.headers,
+    };
+    const server = fastify();
+    void server.register(fastifyTRPCOpenApiPlugin, options);
+    expect(options).toBeDefined();
   });
 });

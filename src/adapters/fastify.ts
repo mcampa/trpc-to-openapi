@@ -6,7 +6,12 @@ import type { Socket } from 'net';
 
 import { NodeHTTPRequest, OpenApiRouter } from '../types';
 import { stripPathPrefix } from '../utils/path';
-import { CreateOpenApiNodeHttpHandlerOptions, createOpenApiNodeHttpHandler } from './node-http';
+import {
+  CreateOpenApiNodeHttpHandlerOptions,
+  OpenApiCreateContextFn,
+  OpenApiErrorHandler,
+  createOpenApiNodeHttpHandler,
+} from './node-http';
 
 interface FastifyRequestWithNodeMethods extends FastifyRequest {
   once: IncomingMessage['once'];
@@ -31,10 +36,18 @@ interface FastifyReplyWithNodeMethods extends FastifyReply {
   removeListener: ServerResponse['removeListener'];
 }
 
-export type CreateOpenApiFastifyPluginOptions<TRouter extends OpenApiRouter> =
-  CreateOpenApiNodeHttpHandlerOptions<TRouter, NodeHTTPRequest, NodeHTTPResponse> & {
-    basePath?: `/${string}`;
-  };
+/**
+ * The plugin hands the (augmented) Fastify request and reply to `createContext`
+ * and `onError`, so they are typed with Fastify's own types.
+ */
+export type CreateOpenApiFastifyPluginOptions<TRouter extends OpenApiRouter> = Omit<
+  CreateOpenApiNodeHttpHandlerOptions<TRouter, NodeHTTPRequest, NodeHTTPResponse>,
+  'createContext' | 'onError'
+> & {
+  createContext?: OpenApiCreateContextFn<TRouter, FastifyRequest, FastifyReply>;
+  onError?: OpenApiErrorHandler<TRouter, FastifyRequest>;
+  basePath?: `/${string}`;
+};
 
 export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
   fastify: FastifyInstance,
@@ -48,7 +61,15 @@ export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
     prefix = prefix.slice(0, -1);
   }
 
-  const openApiHttpHandler = createOpenApiNodeHttpHandler(opts);
+  const openApiHttpHandler = createOpenApiNodeHttpHandler(
+    // The handler receives the augmented Fastify request and reply (see below),
+    // so the Fastify-typed callbacks are called with the objects they declare.
+    opts as unknown as CreateOpenApiNodeHttpHandlerOptions<
+      TRouter,
+      NodeHTTPRequest,
+      NodeHTTPResponse
+    >,
+  );
 
   fastify.route({
     method: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
